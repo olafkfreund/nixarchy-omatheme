@@ -30,6 +30,22 @@ generated files, uses a per-user lock, updates all enabled renderers, and emits
 a stale-application report for applications that cache their theme. It may
 reload supported services, but it must not blindly kill arbitrary processes.
 
+For each application, the integration records one ownership strategy:
+
+1. Stylix generates a stable wrapper/config that imports an Omarchy-managed
+   runtime theme file.
+2. Nix creates a stable symlink or environment/config-path indirection to an
+   Omarchy-managed runtime file.
+3. A Nix-installed wrapper assembles or selects the runtime configuration when
+   the application starts.
+4. The engine renders the complete mutable application config when no
+   indirection exists.
+5. The application remains rebuild-only when none of the above is safe.
+
+The engine never assumes that an arbitrary application understands an import.
+The target matrix identifies the expected file path, owner, renderer, reload or
+restart action, and fallback behavior for every supported application.
+
 The Quickshell plugin is a thin control surface over the CLI. It provides
 status, sync, renderer toggles, stale-application reporting, and restore-stock
 actions. It contains no palette parsing or filesystem ownership logic.
@@ -40,6 +56,10 @@ icons, and static fallback configuration. Stylix targets that write files owned
 by the runtime engine are disabled. Both systems consume the same Omarchy
 `colors.toml` palette contract, but only the runtime engine changes user-session
 files after a theme switch.
+
+Stylix remains the source for declarative color values and static configuration
+shape. The runtime engine does not evaluate Nix or modify Stylix outputs; it
+rewrites only the mutable files referenced by the generated indirections.
 
 The integration is consumed by the existing NixOS flake as a feature module,
 with the runtime engine and plugin supplied from this repository. The first
@@ -78,6 +98,9 @@ ordinary theme selection unnecessarily slow.
   packaging patches.
 - Runtime-generated files can conflict with existing Home Manager or Stylix
   ownership unless the target matrix is explicit.
+- A symlink or wrapper can preserve the application path without providing a
+  true live reload; the verification must distinguish file update from visible
+  application update.
 - GRUB, Plymouth, initrd, console, fonts, and icons cannot promise immediate
   updates.
 
@@ -87,6 +110,9 @@ ordinary theme selection unnecessarily slow.
 - Run the engine's focused CLI checks with a temporary XDG configuration root.
 - Verify hook execution changes generated GTK, Qt, and terminal outputs from one
   palette change.
+- Verify at least one application through each ownership strategy: imported
+  runtime file, symlink/path indirection, wrapper, full-config renderer, and
+  rebuild-only fallback.
 - Validate the plugin manifest with `omarchy plugin validate` and QML with
   `qmllint` against `$OMARCHY_PATH/shell`.
 - Confirm the user service starts without elevated privileges and restarts
