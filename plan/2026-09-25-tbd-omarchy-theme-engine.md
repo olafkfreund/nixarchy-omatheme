@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: tbd
 spec: spec/2026-09-25-tbd-omarchy-theme-engine.md
 ---
