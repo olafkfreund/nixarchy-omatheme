@@ -20,7 +20,7 @@ stdenvNoCC.mkDerivation {
   dontBuild = true;
 
   postPatch = ''
-    for file in bin/hyprchroma lib/* share/hooks/hyprchroma; do
+    for file in bin/* lib/* share/hooks/hyprchroma; do
       substituteInPlace "$file" \
         --replace '/usr/bin/stat' '${coreutils}/bin/stat' \
         --replace '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma' \
@@ -41,6 +41,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
 
     install -Dm755 bin/hyprchroma $out/bin/hyprchroma
+    install -Dm755 bin/hyprchroma-setup $out/bin/hyprchroma-setup
     for file in hyprchroma-state hyprchroma-dark-reader hyprchroma-palette sync-gtk-theme sync-qt-kde-theme; do
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done

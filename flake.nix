@@ -24,8 +24,13 @@
     in
     {
       packages = forAllSystems (system: {
-        default = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/hyprchroma.nix {
+        hyprchroma = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/hyprchroma.nix {
           src = omarchroma;
+        };
+        default = self.packages.${system}.hyprchroma;
+        omarchroma-plugin = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/omarchroma-plugin.nix {
+          src = omarchroma;
+          engine = self.packages.${system}.hyprchroma;
         };
       });
 
