@@ -33,6 +33,15 @@
         package = self.packages.${system}.default;
       });
 
+      nixosModules.default =
+        moduleArgs:
+        import ./modules/nixos.nix (
+          moduleArgs
+          // {
+            defaultPackage = self.packages.${moduleArgs.pkgs.system}.default;
+          }
+        );
+
       devShells = forAllSystems (system: {
         default = nixpkgs.legacyPackages.${system}.mkShell {
           packages = with nixpkgs.legacyPackages.${system}; [
