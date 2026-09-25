@@ -31,6 +31,9 @@ programs.nixarchyThemeEngine.enable = true;
 
 The Nixarchy offline ISO does not need to add Stylix as an input. It receives
 the same daemon, Omarchy hooks, plugin, runtime palette, and target adapters.
+For that installation, import `nixosModules.nixarchy`; it connects the engine
+to `programs.nixarchy.enable` and `programs.nixarchy.user` without adding a
+Stylix dependency.
 
 ## Import boundary example
 
