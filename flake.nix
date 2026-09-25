@@ -43,35 +43,90 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          testSystem = nixpkgs.lib.nixosSystem {
-            inherit system;
-            modules = [
-              home-manager.nixosModules.home-manager
-              self.nixosModules.default
-              {
-                system.stateVersion = "25.11";
-                users.users.test = {
-                  isNormalUser = true;
-                  home = "/home/test";
-                };
-                programs.nixarchyThemeEngine = {
-                  enable = true;
-                  user = "test";
-                };
-                home-manager.users.test.home.stateVersion = "25.11";
-              }
-            ];
-          };
+          baseTestModules = [
+            home-manager.nixosModules.home-manager
+            self.nixosModules.default
+            {
+              system.stateVersion = "25.11";
+              users.users.test = {
+                isNormalUser = true;
+                home = "/home/test";
+              };
+              programs.nixarchyThemeEngine = {
+                enable = true;
+                user = "test";
+              };
+              home-manager.users.test.home.stateVersion = "25.11";
+            }
+          ];
+          stylixProbeModule =
+            { lib, ... }:
+            {
+              options.stylix.enable = lib.mkOption {
+                type = lib.types.bool;
+                default = true;
+              };
+            };
+          makeTestSystem =
+            extraModules:
+            nixpkgs.lib.nixosSystem {
+              inherit system;
+              modules = baseTestModules ++ extraModules;
+            };
+          noStylixSystem = makeTestSystem [ ];
+          stylixSystem = makeTestSystem [ stylixProbeModule ];
+          runtimeSystem = makeTestSystem [
+            stylixProbeModule
+            { programs.nixarchyThemeEngine.stylix.mode = "runtime"; }
+          ];
+          requiredModeFails =
+            !(builtins.tryEval (
+              (makeTestSystem [
+                { programs.nixarchyThemeEngine.stylix.mode = "stylix"; }
+              ]).config.system.build.toplevel.drvPath
+            )).success;
+          serviceFor =
+            testSystem: testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
         in
         {
           package = self.packages.${system}.default;
-          module = builtins.deepSeq {
-            service = testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
-            plugin =
-              testSystem.config.home-manager.users.test.home.file.".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json";
-            themeHook =
-              testSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
-          } (pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out");
+          module =
+            builtins.deepSeq
+              {
+                noStylix = {
+                  service = serviceFor noStylixSystem;
+                  mode = (serviceFor noStylixSystem).Service.Environment;
+                };
+                stylix = {
+                  service = serviceFor stylixSystem;
+                  mode = (serviceFor stylixSystem).Service.Environment;
+                };
+                runtime = {
+                  service = serviceFor runtimeSystem;
+                  mode = (serviceFor runtimeSystem).Service.Environment;
+                };
+                plugin =
+                  noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json";
+                themeHook =
+                  noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
+                inherit requiredModeFails;
+              }
+              (
+                assert
+                  (serviceFor noStylixSystem).Service.Environment == [
+                    "NIXARCHY_THEME_ENGINE_MODE=runtime"
+                  ];
+                assert
+                  (serviceFor stylixSystem).Service.Environment == [
+                    "NIXARCHY_THEME_ENGINE_MODE=stylix"
+                  ];
+                assert
+                  (serviceFor runtimeSystem).Service.Environment == [
+                    "NIXARCHY_THEME_ENGINE_MODE=runtime"
+                  ];
+                assert requiredModeFails;
+                pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
+              );
         }
       );
 

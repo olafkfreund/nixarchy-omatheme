@@ -35,11 +35,13 @@ declarative configuration shape and rebuild-only system targets.
    service runs as the desktop user after the graphical session and never
    writes the Nix store. → verify module evaluation and generated unit/hooks.
 
-5. Stylix integration contract: provide stable wrapper/config paths that can
-   reference runtime files, document which Stylix targets must be disabled when
-   the runtime engine owns a path, and preserve static Stylix targets such as
-   GRUB, Plymouth, fonts, icons, cursor, and console. → verify no ownership
-   collisions in a consuming NixOS evaluation.
+5. Stylix integration contract: keep Stylix optional, detect its NixOS module
+   during evaluation, provide explicit `auto`, `runtime`, and `stylix` modes,
+   provide stable wrapper/config paths that can reference runtime files,
+   document which Stylix targets must be disabled when the runtime engine owns a
+   path, and preserve static Stylix targets such as GRUB, Plymouth, fonts,
+   icons, cursor, and console. → verify no ownership collisions in consuming
+   NixOS evaluations with and without Stylix.
 
 6. Omarchy menu plugin: add a namespaced manifest and thin QML panel for status,
    sync, target toggles, stale applications, and restore-stock. Delegate all
@@ -65,6 +67,8 @@ declarative configuration shape and rebuild-only system targets.
 - `omarchy plugin validate <plugin-dir>`
 - `qmllint -I "$OMARCHY_PATH/shell" ...`
 - NixOS module evaluation/build
+- NixOS module evaluation with Stylix absent, auto-detected, forced runtime,
+  and required-but-absent
 - `just validate`
 - `just test-host <host>` in the consuming configuration
 - One live `omarchy theme set <name>` acceptance test
