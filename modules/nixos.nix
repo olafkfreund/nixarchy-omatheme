@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  options,
   pkgs,
   themeEngineSrc,
   ...
@@ -14,6 +15,16 @@ let
     engine = enginePackage;
   };
   cfg = config.programs.nixarchyThemeEngine;
+  stylixModuleImported = options ? stylix;
+  resolvedThemeMode =
+    if cfg.stylix.mode == "runtime" then
+      "runtime"
+    else if cfg.stylix.mode == "stylix" then
+      "stylix"
+    else if stylixModuleImported then
+      "stylix"
+    else
+      "runtime";
 in
 {
   options.programs.nixarchyThemeEngine = {
@@ -36,9 +47,30 @@ in
       default = defaultPluginPackage;
       description = "Omarchy bar plugin for the runtime theme engine.";
     };
+
+    stylix.mode = lib.mkOption {
+      type = lib.types.enum [
+        "auto"
+        "runtime"
+        "stylix"
+      ];
+      default = "auto";
+      description = ''
+        Theme integration mode. "auto" uses Stylix when its NixOS module is
+        imported and otherwise uses the runtime engine. "runtime" ignores
+        Stylix. "stylix" requires the Stylix NixOS module to be imported.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.stylix.mode != "stylix" || stylixModuleImported;
+        message = "programs.nixarchyThemeEngine.stylix.mode = \"stylix\" requires the Stylix NixOS module to be imported";
+      }
+    ];
+
     home-manager.users.${cfg.user} = {
       home.packages = [ cfg.package ];
 
@@ -70,6 +102,7 @@ in
 
         Service = {
           ExecStart = "${cfg.package}/bin/hyprchroma daemon";
+          Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
           RestartSec = 2;
           RestartPreventExitStatus = 78;
