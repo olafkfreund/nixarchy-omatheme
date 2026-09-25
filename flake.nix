@@ -88,5 +88,7 @@
           ];
         };
       });
+
+      formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);
     };
 }

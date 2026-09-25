@@ -1,6 +1,7 @@
 {
   lib,
   stdenvNoCC,
+  bash,
   coreutils,
   jq,
   python3,
@@ -18,6 +19,14 @@ stdenvNoCC.mkDerivation {
   inherit src;
 
   dontBuild = true;
+
+  nativeBuildInputs = [ bash ];
+
+  checkPhase = ''
+    for file in bin/* lib/* share/hooks/hyprchroma; do
+      bash -n "$file"
+    done
+  '';
 
   postPatch = ''
     for file in bin/* lib/* share/hooks/hyprchroma; do
