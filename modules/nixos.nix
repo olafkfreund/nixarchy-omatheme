@@ -6,6 +6,13 @@
   ...
 }:
 let
+  enginePackage = pkgs.callPackage ../pkgs/hyprchroma.nix {
+    src = themeEngineSrc;
+  };
+  defaultPluginPackage = pkgs.callPackage ../pkgs/omarchroma-plugin.nix {
+    src = themeEngineSrc;
+    engine = enginePackage;
+  };
   cfg = config.programs.nixarchyThemeEngine;
 in
 {
@@ -20,10 +27,14 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../pkgs/hyprchroma.nix {
-        src = themeEngineSrc;
-      };
+      default = enginePackage;
       description = "Package providing the hyprchroma runtime engine.";
+    };
+
+    pluginPackage = lib.mkOption {
+      type = lib.types.package;
+      default = defaultPluginPackage;
+      description = "Omarchy bar plugin for the runtime theme engine.";
     };
   };
 
@@ -32,6 +43,14 @@ in
       home.packages = [ cfg.package ];
 
       home.file = {
+        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json".source =
+          "${cfg.pluginPackage}/manifest.json";
+        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/BarWidget.qml".source =
+          "${cfg.pluginPackage}/BarWidget.qml";
+        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/Panel.qml".source =
+          "${cfg.pluginPackage}/Panel.qml";
+        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/README.md".source =
+          "${cfg.pluginPackage}/README.md";
         ".config/omarchy/hooks/theme-set.d/hyprchroma" = {
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
           executable = true;

@@ -65,9 +65,13 @@
         in
         {
           package = self.packages.${system}.default;
-          module =
-            builtins.deepSeq testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad
-              (pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out");
+          module = builtins.deepSeq {
+            service = testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
+            plugin =
+              testSystem.config.home-manager.users.test.home.file.".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json";
+            themeHook =
+              testSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
+          } (pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out");
         }
       );
 
