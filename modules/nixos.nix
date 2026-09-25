@@ -1,7 +1,8 @@
 {
   config,
   lib,
-  defaultPackage,
+  pkgs,
+  themeEngineSrc,
   ...
 }:
 let
@@ -19,7 +20,9 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = defaultPackage;
+      default = pkgs.callPackage ../pkgs/hyprchroma.nix {
+        src = themeEngineSrc;
+      };
       description = "Package providing the hyprchroma runtime engine.";
     };
   };
