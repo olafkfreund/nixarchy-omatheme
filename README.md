@@ -110,6 +110,10 @@ When Stylix is absent, the runtime engine renders those files itself from the
 active Omarchy palette. The daemon, hooks, menu plugin, and application target
 behavior remain the same.
 
+The current runtime target toggles are GTK, Qt/KDE, Dark Reader, Pear Desktop,
+and opt-in Flatpak support. Terminal colors remain owned by Omarchy's native
+theme command until a verified runtime adapter exists.
+
 ## Development
 
 ```sh

@@ -79,6 +79,14 @@
             stylixProbeModule
             { programs.nixarchyThemeEngine.stylix.mode = "runtime"; }
           ];
+          targetSystem = makeTestSystem [
+            {
+              programs.nixarchyThemeEngine.targets = {
+                gtk = false;
+                flatpak = true;
+              };
+            }
+          ];
           nixarchyProbeModule =
             { lib, ... }:
             {
@@ -139,6 +147,7 @@
                   service = serviceFor runtimeSystem;
                   mode = (serviceFor runtimeSystem).Service.Environment;
                 };
+                targets = serviceFor targetSystem;
                 nixarchy = {
                   service = nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
                   mode =
@@ -166,6 +175,12 @@
                 assert
                   nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad.Service.Environment
                   == [ "NIXARCHY_THEME_ENGINE_MODE=runtime" ];
+                assert builtins.any (
+                  command: builtins.match ".*--target=gtk --set-enabled=false --quiet" command != null
+                ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: builtins.match ".*--target=flatpak --set-enabled=true --quiet" command != null
+                ) (serviceFor targetSystem).Service.ExecStartPre;
                 assert requiredModeFails;
                 pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
               );

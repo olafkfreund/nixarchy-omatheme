@@ -25,6 +25,32 @@ let
       "stylix"
     else
       "runtime";
+  runtimeTargets = [
+    {
+      name = "gtk";
+      enabled = cfg.targets.gtk;
+    }
+    {
+      name = "qt-kde";
+      enabled = cfg.targets.qtKde;
+    }
+    {
+      name = "dark-reader";
+      enabled = cfg.targets.darkReader;
+    }
+    {
+      name = "pear";
+      enabled = cfg.targets.pear;
+    }
+    {
+      name = "flatpak";
+      enabled = cfg.targets.flatpak;
+    }
+  ];
+  targetCommands = map (
+    target:
+    "${cfg.package}/bin/hyprchroma --target=${target.name} --set-enabled=${lib.boolToString target.enabled} --quiet"
+  ) runtimeTargets;
 in
 {
   options.programs.nixarchyThemeEngine = {
@@ -60,6 +86,38 @@ in
         imported and otherwise uses the runtime engine. "runtime" ignores
         Stylix. "stylix" requires the Stylix NixOS module to be imported.
       '';
+    };
+
+    targets = {
+      gtk = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize GTK and GNOME colors at runtime.";
+      };
+
+      qtKde = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize Qt and KDE colors at runtime.";
+      };
+
+      darkReader = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize installed Dark Reader browser extensions.";
+      };
+
+      pear = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize Pear Desktop when it is installed.";
+      };
+
+      flatpak = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Synchronize Flatpak applications using the portal.";
+      };
     };
   };
 
@@ -102,6 +160,7 @@ in
 
         Service = {
           ExecStart = "${cfg.package}/bin/hyprchroma daemon";
+          ExecStartPre = targetCommands;
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
           RestartSec = 2;
