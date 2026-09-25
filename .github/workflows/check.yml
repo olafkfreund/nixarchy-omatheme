@@ -1,0 +1,21 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix flake check --all-systems --no-build
+      - run: nix fmt
+      - run: git diff --exit-code
+      - run: nix build .#omarchroma-plugin
+      - run: nix build .#hyprchroma
