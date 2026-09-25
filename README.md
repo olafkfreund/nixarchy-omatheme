@@ -48,6 +48,22 @@ system.
 }
 ```
 
+For Nixarchy installations, use the dedicated module. It imports the generic
+engine and enables it when the Nixarchy desktop is enabled, using
+`programs.nixarchy.user` when set:
+
+```nix
+{
+  imports = [ nixarchy-omatheme.nixosModules.nixarchy ];
+
+  programs.nixarchy.enable = true;
+  programs.nixarchy.user = "olafkfreund";
+}
+```
+
+This path does not import or install Stylix. It is suitable for the Nixarchy
+offline ISO.
+
 The module installs `hyprchromad` as a user service and places the Omarchy
 plugin and theme hooks under the selected user's Home Manager configuration.
 Apply it with the normal NixOS workflow:

@@ -48,11 +48,12 @@ declarative configuration shape and rebuild-only system targets.
    file and process operations to the CLI. → verify with `omarchy plugin
    validate`, `qmllint`, and shell IPC checks.
 
-7. Consumer integration: add the repository as a flake input to the existing
-   NixOS configuration, import the module behind a feature flag, enable it for
-   one host first, and preserve the current theme hook behavior until the new
-   engine passes live checks. → verify with `just validate` and `just test-host`
-   for the selected host.
+7. Consumer integration: expose a `nixosModules.nixarchy` entry point that
+   imports the generic module and auto-enables it from
+   `programs.nixarchy.enable`, using `programs.nixarchy.user` when configured.
+   Keep direct NixOS users on `nixosModules.default`; consumer configuration
+   changes remain behind a feature flag. → verify with Nixarchy and plain NixOS
+   module evaluations.
 
 8. Live acceptance: switch between two Omarchy themes, confirm one hook-driven
    synchronization updates every enabled runtime target, record applications

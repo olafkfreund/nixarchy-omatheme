@@ -79,6 +79,40 @@
             stylixProbeModule
             { programs.nixarchyThemeEngine.stylix.mode = "runtime"; }
           ];
+          nixarchyProbeModule =
+            { lib, ... }:
+            {
+              options.programs.nixarchy = {
+                enable = lib.mkOption {
+                  type = lib.types.bool;
+                  default = false;
+                };
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                };
+              };
+            };
+          nixarchySystem = nixpkgs.lib.nixosSystem {
+            inherit system;
+            modules = [
+              home-manager.nixosModules.home-manager
+              self.nixosModules.nixarchy
+              nixarchyProbeModule
+              {
+                system.stateVersion = "25.11";
+                users.users.test = {
+                  isNormalUser = true;
+                  home = "/home/test";
+                };
+                programs.nixarchy = {
+                  enable = true;
+                  user = "test";
+                };
+                home-manager.users.test.home.stateVersion = "25.11";
+              }
+            ];
+          };
           requiredModeFails =
             !(builtins.tryEval (
               (makeTestSystem [
@@ -105,6 +139,11 @@
                   service = serviceFor runtimeSystem;
                   mode = (serviceFor runtimeSystem).Service.Environment;
                 };
+                nixarchy = {
+                  service = nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
+                  mode =
+                    nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad.Service.Environment;
+                };
                 plugin =
                   noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json";
                 themeHook =
@@ -124,6 +163,9 @@
                   (serviceFor runtimeSystem).Service.Environment == [
                     "NIXARCHY_THEME_ENGINE_MODE=runtime"
                   ];
+                assert
+                  nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad.Service.Environment
+                  == [ "NIXARCHY_THEME_ENGINE_MODE=runtime" ];
                 assert requiredModeFails;
                 pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
               );
@@ -133,6 +175,15 @@
       nixosModules.default =
         { pkgs, ... }@moduleArgs:
         import ./modules/nixos.nix (moduleArgs // { themeEngineSrc = omarchroma; });
+
+      nixosModules.nixarchy =
+        { pkgs, ... }@moduleArgs:
+        {
+          imports = [
+            (import ./modules/nixos.nix (moduleArgs // { themeEngineSrc = omarchroma; }))
+            ./modules/nixarchy.nix
+          ];
+        };
 
       devShells = forAllSystems (system: {
         default = nixpkgs.legacyPackages.${system}.mkShell {
