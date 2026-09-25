@@ -2,15 +2,40 @@
   lib,
   stdenvNoCC,
   coreutils,
+  jq,
+  python3,
   src,
 }:
 
+let
+  outPath = builtins.placeholder "out";
+  trustedBins = "${coreutils}/bin ${jq}/bin ${python3}/bin /run/current-system/sw/bin";
+  trustedPath = "${coreutils}/bin:${jq}/bin:${python3}/bin:/run/current-system/sw/bin";
+in
 stdenvNoCC.mkDerivation {
   pname = "hyprchroma";
   version = builtins.readFile "${src}/VERSION";
   inherit src;
 
   dontBuild = true;
+
+  postPatch = ''
+    for file in bin/hyprchroma lib/* share/hooks/hyprchroma; do
+      substituteInPlace "$file" \
+        --replace '/usr/bin/stat' '${coreutils}/bin/stat' \
+        --replace '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma' \
+        --replace '/usr/lib/hyprchroma' '${outPath}/lib/hyprchroma'
+      substituteInPlace "$file" \
+        --replace 'for directory in /usr/bin /usr/share/omarchy/bin; do' \
+          'for directory in ${trustedBins}; do' \
+        --replace '"/usr/bin", "/usr/share/omarchy/bin"' \
+          '"${coreutils}/bin", "${jq}/bin", "${python3}/bin", "/run/current-system/sw/bin"' \
+        --replace '"/usr/bin:/usr/share/omarchy/bin"' \
+          '"${trustedPath}"'
+    done
+    substituteInPlace packaging/systemd/hyprchromad.service \
+      --replace-fail '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma'
+  '';
 
   installPhase = ''
     runHook preInstall
@@ -26,11 +51,6 @@ stdenvNoCC.mkDerivation {
     install -Dm644 LICENSE $out/share/licenses/hyprchroma/LICENSE
 
     runHook postInstall
-  '';
-
-  fixupPhase = ''
-    substituteInPlace $out/bin/hyprchroma \
-      --replace-fail '/usr/bin/stat' '${coreutils}/bin/stat'
   '';
 
   meta = {
