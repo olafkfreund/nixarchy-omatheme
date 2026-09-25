@@ -35,10 +35,41 @@ For that installation, import `nixosModules.nixarchy`; it connects the engine
 to `programs.nixarchy.enable` and `programs.nixarchy.user` without adding a
 Stylix dependency.
 
-## Import boundary example
+## Runtime targets
+
+Hyprchroma currently synchronizes the targets it actually implements:
+
+```nix
+programs.nixarchyThemeEngine.targets = {
+  gtk = true;
+  qtKde = true;
+  darkReader = true;
+  pear = true;
+  flatpak = false;
+};
+```
+
+The first four targets are enabled by default. Flatpak is opt-in because it
+changes files through the desktop portal and affects sandboxed applications.
+The module applies these settings when the user service starts, then the
+daemon follows subsequent Omarchy theme changes.
+
+GTK and Qt/KDE are synchronized through their native user configuration files.
+The active palette is also available at:
+
+```text
+~/.config/hyprchroma/palette.toml
+```
+
+Terminals are currently themed by Omarchy's own theme command and are not
+pretended to be Hyprchroma import targets. A terminal-specific runtime adapter
+will be added only when its config ownership and reload behavior are verified.
+
+## Import boundary
 
 For an application with a native import option, keep the import in the
-Stylix/Home Manager configuration and point it at a user-owned runtime file:
+Stylix/Home Manager configuration and point it at a user-owned runtime file
+created by a verified adapter:
 
 ```nix
 { config, ... }:
@@ -52,9 +83,9 @@ Stylix/Home Manager configuration and point it at a user-owned runtime file:
 The runtime engine may replace that file atomically. It must never replace the
 Stylix-generated wrapper in the Nix store.
 
-Without Stylix, the runtime engine renders the same import file directly from
-the active Omarchy `colors.toml`. The application does not need to know whether
-Stylix produced the stable wrapper around it.
+The current Hyprchroma package does not create an Alacritty runtime import file;
+the example is the ownership pattern for future adapters, not a file supplied
+by this release.
 
 ## Ownership rules
 
