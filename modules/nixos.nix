@@ -152,6 +152,7 @@ in
         cfg.package
         pkgs.coreutils
         pkgs.gnugrep
+        pkgs.gnused
       ];
 
       home.file = {
@@ -214,27 +215,27 @@ in
               run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$temporary_config"
               case "$kind" in
                 kitty)
-                  ${pkgs.coreutils}/bin/sed -i -E \
+                  ${pkgs.gnused}/bin/sed -i -E \
                     's#^[[:space:]]*include[[:space:]].*theme-active\.conf[[:space:]]*$#include ~/.config/omarchy/runtime/kitty.conf#' \
                     "$temporary_config"
                   if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/kitty.conf' "$temporary_config"; then
-                    ${pkgs.coreutils}/bin/sed -i '$a include ~/.config/omarchy/runtime/kitty.conf' "$temporary_config"
+                    ${pkgs.gnused}/bin/sed -i '$a include ~/.config/omarchy/runtime/kitty.conf' "$temporary_config"
                   fi
                   ;;
                 foot)
-                  ${pkgs.coreutils}/bin/sed -i -E \
+                  ${pkgs.gnused}/bin/sed -i -E \
                     's#^[[:space:]]*include[[:space:]]*=.*theme-active\.ini[[:space:]]*$#include=~/.config/omarchy/runtime/foot.ini#' \
                     "$temporary_config"
                   if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/foot.ini' "$temporary_config"; then
-                    ${pkgs.coreutils}/bin/sed -i '/^\[main\]$/a include=~/.config/omarchy/runtime/foot.ini' "$temporary_config"
+                    ${pkgs.gnused}/bin/sed -i '/^\[main\]$/a include=~/.config/omarchy/runtime/foot.ini' "$temporary_config"
                   fi
                   ;;
                 ghostty)
-                  ${pkgs.coreutils}/bin/sed -i -E \
+                  ${pkgs.gnused}/bin/sed -i -E \
                     's#^[[:space:]]*config-file[[:space:]]*=.*theme-active\.conf[[:space:]]*$#config-file = ~/.config/omarchy/runtime/ghostty.conf#' \
                     "$temporary_config"
                   if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/ghostty.conf' "$temporary_config"; then
-                    ${pkgs.coreutils}/bin/sed -i '$a config-file = ~/.config/omarchy/runtime/ghostty.conf' "$temporary_config"
+                    ${pkgs.gnused}/bin/sed -i '$a config-file = ~/.config/omarchy/runtime/ghostty.conf' "$temporary_config"
                   fi
                   ;;
               esac
