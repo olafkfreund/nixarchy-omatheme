@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 12
 intent: intent/2026-09-26-12-shell-runtime-targets.md
 ---
