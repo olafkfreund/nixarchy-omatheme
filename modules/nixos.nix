@@ -148,7 +148,11 @@ in
     ];
 
     home-manager.users.${cfg.user} = {
-      home.packages = [ cfg.package ];
+      home.packages = [
+        cfg.package
+        pkgs.coreutils
+        pkgs.gnugrep
+      ];
 
       home.file = {
         ".config/omarchy/hooks/theme-set.d/hyprchroma" = {
