@@ -127,7 +127,9 @@ It updates `workbench.colorCustomizations` while preserving the rest of
 configuration ownership and reload behavior are verified. The runtime status
 file records VS Code as unavailable, restart-required, or refused when its
 settings boundary cannot be safely used; Discord is explicitly unsupported
-and is never modified.
+and is never modified. The registry also reports Slack and Obsidian as
+unsupported because their theme state is workspace- or vault-scoped rather
+than a verified global settings boundary.
 
 ## Development
 

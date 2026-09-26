@@ -64,6 +64,11 @@ stdenvNoCC.mkDerivation {
         '    "$HYPRCHROMA_LIB/hyprchroma-shell"\n'
         '    exit $?\n'
         '    ;;\n'
+        '  electron)\n'
+        '    shift\n'
+        '    "$HYPRCHROMA_LIB/hyprchroma-electron" "$' + '{1:-status}"\n'
+        '    exit $?\n'
+        '    ;;\n'
         '  daemon)',
         1,
     )
@@ -71,6 +76,7 @@ stdenvNoCC.mkDerivation {
         '       hyprchroma daemon           watch for changes and keep everything in step\n',
         '       hyprchroma terminals [name]  render Kitty, Foot, and Ghostty files\n'
         '       hyprchroma shell             render Starship and shell colors\n'
+        '       hyprchroma electron [app]    synchronize Electron registry status\n'
         '       hyprchroma daemon           watch for changes and keep everything in step\n',
         1,
     )

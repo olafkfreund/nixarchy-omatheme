@@ -143,9 +143,24 @@
                   ${pkgs.bash}/bin/bash ${./tests/runtime-targets.sh}
                 touch $out
               '';
+          electronRuntimeTest =
+            pkgs.runCommand "nixarchy-omatheme-electron-runtime"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.python3
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  ${pkgs.bash}/bin/bash ${./tests/electron-runtime.sh}
+                touch $out
+              '';
         in
         {
           package = self.packages.${system}.default;
+          electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
           module =
             builtins.deepSeq
@@ -209,6 +224,9 @@
                 assert builtins.any (
                   command: builtins.match ".*--target=flatpak --set-enabled=true --quiet" command != null
                 ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"
+                ) (serviceFor noStylixSystem).Service.ExecStartPre;
                 assert requiredModeFails;
                 pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
               );

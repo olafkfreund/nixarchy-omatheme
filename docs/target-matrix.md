@@ -18,6 +18,9 @@ Each target has one owner for structure and one owner for mutable theme data.
 | GNOME settings | Stylix static defaults | Runtime gsettings | Engine sync | Re-login |
 | Dark Reader | Browser policy/extension | Browser extension storage | Engine sync | Browser restart |
 | VS Code | User settings JSON | Hyprchroma color customizations | Theme hook/settings reload | Reload window |
+| Discord | Application-managed settings | None | Explicit unsupported status | No changes |
+| Slack | Workspace/application preferences | None | Explicit unsupported status | No changes |
+| Obsidian | Vault-scoped appearance | None | Explicit unsupported status | No changes |
 | Other Electron apps | App-specific wrapper/config | App-specific renderer | Unsupported until verified | App restart |
 | Flatpak apps | Declarative permissions | Runtime GTK/KDE files | Opt-in sync | App restart |
 | GRUB/Plymouth/initrd | Stylix/NixOS | Stylix palette | Rebuild/reboot | Rebuild |

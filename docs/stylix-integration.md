@@ -75,9 +75,10 @@ restart-required for arbitrary palette changes.
 
 VS Code is an opt-in Electron adapter. It updates only generated entries in
 `workbench.colorCustomizations`; other Electron applications are not modified
-until a verified adapter exists. Electron states are recorded in
-`~/.local/state/hyprchroma/electron.json`. Discord is explicitly reported as
-unsupported and remains inert.
+until a verified adapter exists. Electron states for VS Code, Discord, Slack,
+and Obsidian are recorded in `~/.local/state/hyprchroma/electron.json`.
+Discord, Slack, and Obsidian are explicitly reported as unsupported and remain
+inert.
 
 ## Import boundary
 
