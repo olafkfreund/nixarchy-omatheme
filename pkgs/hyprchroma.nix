@@ -45,6 +45,30 @@ stdenvNoCC.mkDerivation {
     done
     substituteInPlace packaging/systemd/hyprchromad.service \
       --replace-fail '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma'
+    ${python3}/bin/python3 - <<'PY'
+    from pathlib import Path
+
+    path = Path("bin/hyprchroma")
+    text = path.read_text()
+    text = text.replace(
+        'case "$' + '{1:-}" in\n  daemon)',
+        'case "$' + '{1:-}" in\n'
+        '  terminals)\n'
+        '    shift\n'
+        '    "$HYPRCHROMA_LIB/hyprchroma-terminals" "$' + '{1:-all}"\n'
+        '    exit $?\n'
+        '    ;;\n'
+        '  daemon)',
+        1,
+    )
+    text = text.replace(
+        '       hyprchroma daemon           watch for changes and keep everything in step\n',
+        '       hyprchroma terminals [name]  render Kitty, Foot, and Ghostty files\n'
+        '       hyprchroma daemon           watch for changes and keep everything in step\n',
+        1,
+    )
+    path.write_text(text)
+    PY
   '';
 
   installPhase = ''
