@@ -155,6 +155,8 @@
                 };
                 pluginActivation =
                   noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin;
+                alacrittyActivation =
+                  noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty;
                 themeHook =
                   noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
                 inherit requiredModeFails;

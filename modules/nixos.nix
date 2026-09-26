@@ -159,6 +159,23 @@ in
         '';
       };
 
+      home.activation.nixarchyThemeEngineAlacritty = {
+        after = [ "linkGeneration" ];
+        before = [ ];
+        data = ''
+          alacritty_config="$HOME/.config/alacritty/alacritty.toml"
+          if [ -L "$alacritty_config" ]; then
+            generated_config=$(${pkgs.coreutils}/bin/readlink -f -- "$alacritty_config")
+            if [ -f "$generated_config" ]; then
+              temporary_config="$alacritty_config.nixarchy-tmp"
+              run ${pkgs.coreutils}/bin/rm -f -- "$temporary_config"
+              run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$temporary_config"
+              run ${pkgs.coreutils}/bin/mv -f -- "$temporary_config" "$alacritty_config"
+            fi
+          fi
+        '';
+      };
+
       systemd.user.services.hyprchromad = {
         Unit = {
           Description = "Omarchy runtime theme synchronization";
