@@ -11,8 +11,22 @@ STATE = LIB / "hyprchroma-state"
 PALETTE = LIB / "hyprchroma-palette"
 STATE_FILE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "hyprchroma/electron.json"
 REGISTRY = {
-    "vscode": "supported",
-    "discord": "unsupported",
+    "vscode": {
+        "status": "supported",
+        "path": Path("Code/User/settings.json"),
+    },
+    "discord": {
+        "status": "unsupported",
+        "reason": "application-managed theme settings",
+    },
+    "slack": {
+        "status": "unsupported",
+        "reason": "workspace/application-managed theme settings",
+    },
+    "obsidian": {
+        "status": "unsupported",
+        "reason": "vault-scoped theme settings",
+    },
 }
 GENERATED = {
     "editor.background",
@@ -58,15 +72,22 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def write_status(overrides: dict[str, str] | None = None) -> None:
-    status = {name: state for name, state in REGISTRY.items()}
-    try:
-        previous = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        if isinstance(previous, dict):
-            status.update({name: str(value) for name, value in previous.items() if name in REGISTRY})
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        pass
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    status = {}
+    for name, entry in REGISTRY.items():
+        if entry["status"] == "unsupported":
+            status[name] = "unsupported"
+            continue
+        path = config_home / entry["path"]
+        status[name] = "refused" if path.is_symlink() else "supported" if path.exists() else "unavailable"
     status.update(overrides or {})
     write_json(STATE_FILE, status)
+
+
+def status() -> int:
+    write_status()
+    print("hyprchroma-electron: registry status synchronized")
+    return 0
 
 
 def unsupported(name: str) -> int:
@@ -76,7 +97,7 @@ def unsupported(name: str) -> int:
 
 
 def vscode() -> int:
-    path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Code/User/settings.json"
+    path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / REGISTRY["vscode"]["path"]
     if not path.exists():
         write_status({"vscode": "unavailable"})
         print(f"hyprchroma-electron: VS Code settings are unavailable: {path}")
@@ -127,7 +148,13 @@ def vscode() -> int:
     return 0
 
 
-if len(sys.argv) != 2 or sys.argv[1] not in REGISTRY:
-    print("Usage: hyprchroma-electron [vscode|discord]", file=sys.stderr)
+if len(sys.argv) != 2 or sys.argv[1] not in (*REGISTRY, "status"):
+    print("Usage: hyprchroma-electron [status|vscode|discord|slack|obsidian]", file=sys.stderr)
     raise SystemExit(2)
-raise SystemExit(vscode() if sys.argv[1] == "vscode" else unsupported(sys.argv[1]))
+raise SystemExit(
+    status()
+    if sys.argv[1] == "status"
+    else vscode()
+    if sys.argv[1] == "vscode"
+    else unsupported(sys.argv[1])
+)

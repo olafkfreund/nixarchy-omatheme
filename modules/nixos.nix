@@ -388,6 +388,7 @@ in
           ExecStartPre =
             targetCommands
             ++ lib.optional shellTargetsEnabled "${cfg.package}/bin/hyprchroma shell"
+            ++ [ "${cfg.package}/bin/hyprchroma electron status" ]
             ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode";
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
