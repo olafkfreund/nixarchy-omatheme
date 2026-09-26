@@ -61,9 +61,16 @@ The active palette is also available at:
 ~/.config/hyprchroma/palette.toml
 ```
 
-Terminals are currently themed by Omarchy's own theme command and are not
-pretended to be Hyprchroma import targets. A terminal-specific runtime adapter
-will be added only when its config ownership and reload behavior are verified.
+Kitty, Foot, and Ghostty use runtime include files rendered from the active
+palette. Their declarative wrappers are copied to regular user-owned files
+after Home Manager links the generation, so Omarchy and Hyprchroma never write
+to the Nix store. Kitty can update running windows through remote control;
+Ghostty can reload through its user service; Foot reports existing windows as
+restart-required for arbitrary palette changes.
+
+VS Code is an opt-in Electron adapter. It updates only generated entries in
+`workbench.colorCustomizations`; other Electron applications are not modified
+until a verified adapter exists.
 
 ## Import boundary
 

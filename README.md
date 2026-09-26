@@ -111,8 +111,19 @@ active Omarchy palette. The daemon, hooks, menu plugin, and application target
 behavior remain the same.
 
 The current runtime target toggles are GTK, Qt/KDE, Dark Reader, Pear Desktop,
-and opt-in Flatpak support. Terminal colors remain owned by Omarchy's native
-theme command until a verified runtime adapter exists.
+Kitty, Foot, Ghostty, and opt-in Flatpak support. Terminal wrappers preserve
+Stylix/Home Manager settings while importing mutable files under
+`~/.config/omarchy/runtime/`.
+
+VS Code is available as an opt-in Electron adapter:
+
+```nix
+programs.nixarchyThemeEngine.electron.apps.vscode.enable = true;
+```
+
+It updates `workbench.colorCustomizations` while preserving the rest of
+`settings.json`. Other Electron applications remain unsupported until their
+configuration ownership and reload behavior are verified.
 
 ## Development
 
