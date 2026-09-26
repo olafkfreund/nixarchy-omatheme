@@ -7,6 +7,7 @@
   python3,
   src,
   electronRenderer ? ./hyprchroma-electron,
+  shellRenderer ? ./hyprchroma-shell,
   terminalRenderer ? ./hyprchroma-terminals,
 }:
 
@@ -59,12 +60,17 @@ stdenvNoCC.mkDerivation {
         '    "$HYPRCHROMA_LIB/hyprchroma-terminals" "$' + '{1:-all}"\n'
         '    exit $?\n'
         '    ;;\n'
+        '  shell)\n'
+        '    "$HYPRCHROMA_LIB/hyprchroma-shell"\n'
+        '    exit $?\n'
+        '    ;;\n'
         '  daemon)',
         1,
     )
     text = text.replace(
         '       hyprchroma daemon           watch for changes and keep everything in step\n',
         '       hyprchroma terminals [name]  render Kitty, Foot, and Ghostty files\n'
+        '       hyprchroma shell             render Starship and shell colors\n'
         '       hyprchroma daemon           watch for changes and keep everything in step\n',
         1,
     )
@@ -74,6 +80,7 @@ stdenvNoCC.mkDerivation {
     text = text.replace(
         marker,
         '\n"$HYPRCHROMA_LIB/hyprchroma-terminals" all || fail "terminal synchronization failed"'
+        '\n"$HYPRCHROMA_LIB/hyprchroma-shell" || fail "shell synchronization failed"'
         + marker,
         1,
     )
@@ -90,6 +97,7 @@ stdenvNoCC.mkDerivation {
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done
     install -Dm755 "${terminalRenderer}" "$out/lib/hyprchroma/hyprchroma-terminals"
+    install -Dm755 "${shellRenderer}" "$out/lib/hyprchroma/hyprchroma-shell"
     install -Dm755 "${electronRenderer}" "$out/lib/hyprchroma/hyprchroma-electron"
     install -Dm644 share/pear-theme.css.template $out/share/hyprchroma/pear-theme.css.template
     install -Dm755 share/hooks/hyprchroma $out/share/hyprchroma/hooks/hyprchroma

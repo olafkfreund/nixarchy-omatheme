@@ -111,7 +111,8 @@ active Omarchy palette. The daemon, hooks, menu plugin, and application target
 behavior remain the same.
 
 The current runtime target toggles are GTK, Qt/KDE, Dark Reader, Pear Desktop,
-Kitty, Foot, Ghostty, and opt-in Flatpak support. Terminal wrappers preserve
+Starship, Bash, Zsh, Fish, Kitty, Foot, Ghostty, and opt-in Flatpak support.
+Shell hooks and terminal wrappers preserve
 Stylix/Home Manager settings while importing mutable files under
 `~/.config/omarchy/runtime/`.
 
