@@ -4,6 +4,11 @@ set -euo pipefail
 HYPRCHROMA_LIB=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 RUNTIME_DIR="$CONFIG_HOME/omarchy/runtime"
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/hyprchroma
+
+kitty_status="new-windows-only"
+foot_status="restart-required"
+ghostty_status="new-windows-only"
 
 declare -A PALETTE
 while IFS=$'\t' read -r key value; do
@@ -112,14 +117,54 @@ palette = 15=$(without_hash "${PALETTE[bright_foreground]}")
 EOF
 }
 
+reload_kitty() {
+  if command -v kitten >/dev/null 2>&1 && \
+    kitten @ set-colors --all --configured "$RUNTIME_DIR/kitty.conf" >/dev/null 2>&1; then
+    kitty_status="synchronized"
+  fi
+}
+
+reload_ghostty() {
+  if command -v systemctl >/dev/null 2>&1 && \
+    systemctl --user is-active --quiet app-com.mitchellh.ghostty.service && \
+    systemctl --user reload app-com.mitchellh.ghostty.service >/dev/null 2>&1; then
+    ghostty_status="synchronized"
+  fi
+}
+
+write_status() {
+  cat <<EOF | "$HYPRCHROMA_LIB/hyprchroma-state" write-file \
+    --path "$STATE_DIR/terminals.json" --mode 644
+{
+  "kitty": "$kitty_status",
+  "foot": "$foot_status",
+  "ghostty": "$ghostty_status"
+}
+EOF
+}
+
 case ${1:-all} in
-  kitty) render_kitty ;;
-  foot) render_foot ;;
-  ghostty) render_ghostty ;;
+  kitty)
+    render_kitty
+    reload_kitty
+    write_status
+    ;;
+  foot)
+    render_foot
+    write_status
+    ;;
+  ghostty)
+    render_ghostty
+    reload_ghostty
+    write_status
+    ;;
   all)
     render_kitty
     render_foot
     render_ghostty
+    reload_kitty
+    reload_ghostty
+    write_status
     ;;
   *)
     printf 'Usage: hyprchroma-terminals [kitty|foot|ghostty|all]\n' >&2
