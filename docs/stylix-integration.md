@@ -54,6 +54,11 @@ changes files through the desktop portal and affects sandboxed applications.
 The module applies these settings when the user service starts, then the
 daemon follows subsequent Omarchy theme changes.
 
+Starship, Bash, Zsh, and Fish are enabled by default as well. Their shell
+structure remains declarative, while mutable palette files under
+`~/.config/omarchy/runtime` are refreshed on the next prompt event. Changing a
+theme therefore does not require a rebuild.
+
 GTK and Qt/KDE are synchronized through their native user configuration files.
 The active palette is also available at:
 

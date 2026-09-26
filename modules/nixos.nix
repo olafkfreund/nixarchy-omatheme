@@ -51,6 +51,8 @@ let
     target:
     "${cfg.package}/bin/hyprchroma --target=${target.name} --set-enabled=${lib.boolToString target.enabled} --quiet"
   ) runtimeTargets;
+  shellTargetsEnabled =
+    cfg.targets.starship || cfg.targets.bash || cfg.targets.zsh || cfg.targets.fish;
 in
 {
   options.programs.nixarchyThemeEngine = {
@@ -136,6 +138,30 @@ in
         default = true;
         description = "Render and reload Ghostty's runtime theme file.";
       };
+
+      starship = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize Starship's runtime palette.";
+      };
+
+      bash = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Load runtime theme colors in Bash prompts.";
+      };
+
+      zsh = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Load runtime theme colors in Zsh prompts.";
+      };
+
+      fish = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Load runtime theme colors in Fish prompts.";
+      };
     };
 
     electron = {
@@ -183,6 +209,53 @@ in
         };
       };
 
+      programs.bash.bashrcExtra = lib.mkIf cfg.targets.bash (
+        lib.mkAfter ''
+          _hyprchroma_shell_refresh() {
+            local file="$HOME/.config/omarchy/runtime/shell-theme.sh"
+            local stamp
+            [ -r "$file" ] || return 0
+            stamp=$(${pkgs.coreutils}/bin/stat -c %Y -- "$file" 2>/dev/null) || return 0
+            if [ "''${HYPRCHROMA_SHELL_STAMP:-}" != "$stamp" ]; then
+              . "$file"
+              HYPRCHROMA_SHELL_STAMP="$stamp"
+            fi
+          }
+          case ";''${PROMPT_COMMAND:-};" in
+            *";_hyprchroma_shell_refresh;"*) ;;
+            *) PROMPT_COMMAND="_hyprchroma_shell_refresh''${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ;;
+          esac
+        ''
+      );
+
+      programs.zsh.initContent = lib.mkIf cfg.targets.zsh (
+        lib.mkAfter ''
+          function _hyprchroma_shell_refresh() {
+            local file="$HOME/.config/omarchy/runtime/shell-theme.sh"
+            local stamp
+            [[ -r "$file" ]] || return 0
+            stamp=$(${pkgs.coreutils}/bin/stat -c %Y -- "$file" 2>/dev/null) || return 0
+            if [[ "''${HYPRCHROMA_SHELL_STAMP:-}" != "$stamp" ]]; then
+              source "$file"
+              HYPRCHROMA_SHELL_STAMP="$stamp"
+            fi
+          }
+          autoload -Uz add-zsh-hook
+          add-zsh-hook -d precmd _hyprchroma_shell_refresh 2>/dev/null
+          add-zsh-hook precmd _hyprchroma_shell_refresh
+        ''
+      );
+
+      programs.fish.interactiveShellInit = lib.mkIf cfg.targets.fish (
+        lib.mkAfter ''
+          function _hyprchroma_shell_refresh --on-event fish_prompt
+            set -l file "$HOME/.config/omarchy/runtime/shell-theme.fish"
+            test -r "$file"; or return
+            source "$file"
+          end
+        ''
+      );
+
       home.activation.nixarchyThemeEnginePlugin = {
         after = [ "linkGeneration" ];
         before = [ ];
@@ -212,6 +285,25 @@ in
               run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$temporary_config"
               run ${pkgs.coreutils}/bin/mv -f -- "$temporary_config" "$alacritty_config"
             fi
+          fi
+        '';
+      };
+
+      home.activation.nixarchyThemeEngineShell = {
+        after = [ "linkGeneration" ];
+        before = [ ];
+        data = ''
+          runtime_dir="$HOME/.config/omarchy/runtime"
+          starship_config="$HOME/.config/starship.toml"
+          starship_base="$runtime_dir/starship.base.toml"
+          run ${pkgs.coreutils}/bin/mkdir -p "$runtime_dir"
+          if [ -L "$starship_config" ]; then
+            generated_config=$(${pkgs.coreutils}/bin/readlink -f -- "$starship_config")
+            if [ -f "$generated_config" ]; then
+              run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$starship_base"
+            fi
+          elif [ -f "$starship_config" ]; then
+            run ${pkgs.coreutils}/bin/install -Dm644 "$starship_config" "$starship_base"
           fi
         '';
       };
@@ -295,6 +387,7 @@ in
           ExecStart = "${cfg.package}/bin/hyprchroma daemon";
           ExecStartPre =
             targetCommands
+            ++ lib.optional shellTargetsEnabled "${cfg.package}/bin/hyprchroma shell"
             ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode";
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";

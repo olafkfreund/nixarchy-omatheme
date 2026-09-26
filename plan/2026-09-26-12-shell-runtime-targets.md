@@ -13,7 +13,7 @@ applications inert.
 ## Steps
 
 1. `pkgs/hyprchroma-shell`: add a renderer that validates the active palette,
-   writes `starship.toml` and `shell-theme.sh` atomically through
+   writes `starship.toml`, `shell-theme.sh`, and native `shell-theme.fish` atomically through
    `hyprchroma-state`, and emits per-target shell status → verify deterministic
    output and shell syntax in temporary XDG homes.
 2. `modules/nixos.nix`: add shell target options, runtime directories, and
