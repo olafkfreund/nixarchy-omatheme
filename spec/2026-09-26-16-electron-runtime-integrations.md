@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 16
 intent: intent/2026-09-26-16-electron-runtime-integrations.md
 ---
