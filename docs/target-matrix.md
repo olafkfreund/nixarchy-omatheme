@@ -8,7 +8,7 @@ Each target has one owner for structure and one owner for mutable theme data.
 | Omarchy shell/Hyprland | Omarchy | Omarchy | Native theme hook | None |
 | Starship | Stylix or Home Manager | Hyprchroma runtime `starship.toml` | Prompt reads runtime config | None |
 | Bash/Zsh/Fish | Home Manager shell config | Hyprchroma runtime exports | Prompt hook reloads colors | None |
-| Alacritty | Stylix or Omarchy wrapper | Omarchy theme file | Native template reload | Restart terminal |
+| Alacritty | Home Manager/Stylix | Existing generated config or user-owned import | Bridge copies generated symlink to a regular file; external hook owns reload | Restart terminal / no Hyprchroma renderer |
 | Kitty | Stylix or Omarchy wrapper | Hyprchroma runtime file | Remote color update when available | Reload/restart terminal |
 | Foot | Stylix or Omarchy wrapper | Hyprchroma runtime file | New clients use updated file | Restart existing clients |
 | Ghostty | Stylix or Omarchy wrapper | Hyprchroma runtime file | User-service reload when available | Restart terminal |

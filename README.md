@@ -110,9 +110,9 @@ When Stylix is absent, the runtime engine renders those files itself from the
 active Omarchy palette. The daemon, hooks, menu plugin, and application target
 behavior remain the same.
 
-The current runtime target toggles are GTK, Qt/KDE, Dark Reader, Pear Desktop,
-Starship, Bash, Zsh, Fish, Kitty, Foot, Ghostty, and opt-in Flatpak support.
-Shell hooks and terminal wrappers preserve
+The current runtime integrations include GTK, Qt/KDE, Dark Reader, Pear Desktop,
+Starship, Bash, Zsh, Fish, Alacritty, Kitty, Foot, Ghostty, and opt-in Flatpak
+support. Shell hooks and terminal wrappers preserve
 Stylix/Home Manager settings while importing mutable files under
 `~/.config/omarchy/runtime/`.
 

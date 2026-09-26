@@ -129,9 +129,24 @@
             )).success;
           serviceFor =
             testSystem: testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
+          runtimeTargetsTest =
+            pkgs.runCommand "nixarchy-omatheme-runtime-targets"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.python3
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  ${pkgs.bash}/bin/bash ${./tests/runtime-targets.sh}
+                touch $out
+              '';
         in
         {
           package = self.packages.${system}.default;
+          runtime = runtimeTargetsTest;
           module =
             builtins.deepSeq
               {
@@ -162,6 +177,17 @@
                 inherit requiredModeFails;
               }
               (
+                assert
+                  noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty.after
+                  == [ "linkGeneration" ];
+                assert
+                  builtins.match ".*readlink -f.*alacritty_config.*" (
+                    noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty.data
+                  ) != null;
+                assert
+                  builtins.match ".*mv -f.*alacritty_config.*" (
+                    noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty.data
+                  ) != null;
                 assert
                   (serviceFor noStylixSystem).Service.Environment == [
                     "NIXARCHY_THEME_ENGINE_MODE=runtime"
