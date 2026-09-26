@@ -6,6 +6,7 @@
   jq,
   python3,
   src,
+  terminalRenderer ? ./hyprchroma-terminals,
 }:
 
 let
@@ -54,6 +55,7 @@ stdenvNoCC.mkDerivation {
     for file in hyprchroma-state hyprchroma-dark-reader hyprchroma-palette sync-gtk-theme sync-qt-kde-theme; do
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done
+    install -Dm755 "${terminalRenderer}" "$out/lib/hyprchroma/hyprchroma-terminals"
     install -Dm644 share/pear-theme.css.template $out/share/hyprchroma/pear-theme.css.template
     install -Dm755 share/hooks/hyprchroma $out/share/hyprchroma/hooks/hyprchroma
     install -Dm644 packaging/systemd/hyprchromad.service $out/lib/systemd/user/hyprchromad.service
