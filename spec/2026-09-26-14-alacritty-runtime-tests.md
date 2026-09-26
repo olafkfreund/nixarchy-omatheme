@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 14
 intent: intent/2026-09-26-14-alacritty-runtime-tests.md
 ---
