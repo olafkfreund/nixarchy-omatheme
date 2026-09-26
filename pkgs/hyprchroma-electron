@@ -9,6 +9,11 @@ from pathlib import Path
 LIB = Path(__file__).resolve().parent
 STATE = LIB / "hyprchroma-state"
 PALETTE = LIB / "hyprchroma-palette"
+STATE_FILE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "hyprchroma/electron.json"
+REGISTRY = {
+    "vscode": "supported",
+    "discord": "unsupported",
+}
 GENERATED = {
     "editor.background",
     "editor.foreground",
@@ -52,15 +57,39 @@ def write_json(path: Path, value: dict) -> None:
     )
 
 
+def write_status(overrides: dict[str, str] | None = None) -> None:
+    status = {name: state for name, state in REGISTRY.items()}
+    try:
+        previous = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        if isinstance(previous, dict):
+            status.update({name: str(value) for name, value in previous.items() if name in REGISTRY})
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+    status.update(overrides or {})
+    write_json(STATE_FILE, status)
+
+
+def unsupported(name: str) -> int:
+    write_status({name: "unsupported"})
+    print(f"hyprchroma-electron: {name} is unsupported; no files changed")
+    return 0
+
+
 def vscode() -> int:
     path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Code/User/settings.json"
+    if not path.exists():
+        write_status({"vscode": "unavailable"})
+        print(f"hyprchroma-electron: VS Code settings are unavailable: {path}")
+        return 0
     if path.is_symlink():
         print(f"hyprchroma-electron: refusing store-linked VS Code settings: {path}", file=sys.stderr)
+        write_status({"vscode": "refused"})
         return 3
     try:
         settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         print(f"hyprchroma-electron: cannot read {path}: {error}", file=sys.stderr)
+        write_status({"vscode": "unavailable"})
         return 1
 
     colors = palette()
@@ -93,11 +122,12 @@ def vscode() -> int:
     settings["workbench.colorCustomizations"] = customizations
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, settings)
+    write_status({"vscode": "restart-required"})
     print("hyprchroma-electron: VS Code colors synchronized; reload the window if needed")
     return 0
 
 
-if len(sys.argv) != 2 or sys.argv[1] != "vscode":
-    print("Usage: hyprchroma-electron vscode", file=sys.stderr)
+if len(sys.argv) != 2 or sys.argv[1] not in REGISTRY:
+    print("Usage: hyprchroma-electron [vscode|discord]", file=sys.stderr)
     raise SystemExit(2)
-raise SystemExit(vscode())
+raise SystemExit(vscode() if sys.argv[1] == "vscode" else unsupported(sys.argv[1]))

@@ -123,7 +123,10 @@ programs.nixarchyThemeEngine.electron.apps.vscode.enable = true;
 
 It updates `workbench.colorCustomizations` while preserving the rest of
 `settings.json`. Other Electron applications remain unsupported until their
-configuration ownership and reload behavior are verified.
+configuration ownership and reload behavior are verified. The runtime status
+file records VS Code as unavailable, restart-required, or refused when its
+settings boundary cannot be safely used; Discord is explicitly unsupported
+and is never modified.
 
 ## Development
 
