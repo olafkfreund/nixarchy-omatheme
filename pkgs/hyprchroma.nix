@@ -6,6 +6,8 @@
   jq,
   python3,
   src,
+  electronRenderer ? ./hyprchroma-electron,
+  terminalRenderer ? ./hyprchroma-terminals,
 }:
 
 let
@@ -44,6 +46,39 @@ stdenvNoCC.mkDerivation {
     done
     substituteInPlace packaging/systemd/hyprchromad.service \
       --replace-fail '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma'
+    ${python3}/bin/python3 - <<'PY'
+    from pathlib import Path
+
+    path = Path("bin/hyprchroma")
+    text = path.read_text()
+    text = text.replace(
+        'case "$' + '{1:-}" in\n  daemon)',
+        'case "$' + '{1:-}" in\n'
+        '  terminals)\n'
+        '    shift\n'
+        '    "$HYPRCHROMA_LIB/hyprchroma-terminals" "$' + '{1:-all}"\n'
+        '    exit $?\n'
+        '    ;;\n'
+        '  daemon)',
+        1,
+    )
+    text = text.replace(
+        '       hyprchroma daemon           watch for changes and keep everything in step\n',
+        '       hyprchroma terminals [name]  render Kitty, Foot, and Ghostty files\n'
+        '       hyprchroma daemon           watch for changes and keep everything in step\n',
+        1,
+    )
+    marker = '\npython3 - "$HYPRCHROMA_LIB/hyprchroma-state" "$STATUS_FILE"'
+    if marker not in text:
+        raise SystemExit("hyprchroma status update marker was not found")
+    text = text.replace(
+        marker,
+        '\n"$HYPRCHROMA_LIB/hyprchroma-terminals" all || fail "terminal synchronization failed"'
+        + marker,
+        1,
+    )
+    path.write_text(text)
+    PY
   '';
 
   installPhase = ''
@@ -54,6 +89,8 @@ stdenvNoCC.mkDerivation {
     for file in hyprchroma-state hyprchroma-dark-reader hyprchroma-palette sync-gtk-theme sync-qt-kde-theme; do
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done
+    install -Dm755 "${terminalRenderer}" "$out/lib/hyprchroma/hyprchroma-terminals"
+    install -Dm755 "${electronRenderer}" "$out/lib/hyprchroma/hyprchroma-electron"
     install -Dm644 share/pear-theme.css.template $out/share/hyprchroma/pear-theme.css.template
     install -Dm755 share/hooks/hyprchroma $out/share/hyprchroma/hooks/hyprchroma
     install -Dm644 packaging/systemd/hyprchromad.service $out/lib/systemd/user/hyprchromad.service

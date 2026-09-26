@@ -7,15 +7,16 @@ Each target has one owner for structure and one owner for mutable theme data.
 | --- | --- | --- | --- | --- |
 | Omarchy shell/Hyprland | Omarchy | Omarchy | Native theme hook | None |
 | Alacritty | Stylix or Omarchy wrapper | Omarchy theme file | Native template reload | Restart terminal |
-| Kitty | Stylix or Omarchy wrapper | Omarchy theme file | Native template reload | Restart terminal |
-| Foot | Stylix or Omarchy wrapper | Omarchy theme file | Native template reload | Restart terminal |
-| Ghostty | Stylix or Omarchy wrapper | Omarchy theme file | Native template reload | Restart terminal |
+| Kitty | Stylix or Omarchy wrapper | Hyprchroma runtime file | Remote color update when available | Reload/restart terminal |
+| Foot | Stylix or Omarchy wrapper | Hyprchroma runtime file | New clients use updated file | Restart existing clients |
+| Ghostty | Stylix or Omarchy wrapper | Hyprchroma runtime file | User-service reload when available | Restart terminal |
 | GTK 3/4 | Stylix wrapper or runtime engine | Runtime GTK CSS | Engine sync | Restart app |
 | libadwaita | Runtime engine | Runtime GTK CSS/settings | Engine sync | Restart app |
 | Qt/KDE | Stylix wrapper or runtime engine | Runtime KDE files | Engine sync | Restart app |
 | GNOME settings | Stylix static defaults | Runtime gsettings | Engine sync | Re-login |
 | Dark Reader | Browser policy/extension | Browser extension storage | Engine sync | Browser restart |
-| Electron apps | App-specific wrapper/config | App-specific renderer | Target-specific | App restart |
+| VS Code | User settings JSON | Hyprchroma color customizations | Theme hook/settings reload | Reload window |
+| Other Electron apps | App-specific wrapper/config | App-specific renderer | Unsupported until verified | App restart |
 | Flatpak apps | Declarative permissions | Runtime GTK/KDE files | Opt-in sync | App restart |
 | GRUB/Plymouth/initrd | Stylix/NixOS | Stylix palette | Rebuild/reboot | Rebuild |
 | Fonts/cursors/icons | Stylix/NixOS | Stylix packages | Rebuild | Rebuild |

@@ -118,6 +118,32 @@ in
         default = false;
         description = "Synchronize Flatpak applications using the portal.";
       };
+
+      kitty = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Render and reload Kitty's runtime theme file.";
+      };
+
+      foot = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Render Foot's runtime theme file.";
+      };
+
+      ghostty = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Render and reload Ghostty's runtime theme file.";
+      };
+    };
+
+    electron = {
+      apps.vscode.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Synchronize VS Code color customizations at theme changes.";
+      };
     };
   };
 
@@ -130,7 +156,12 @@ in
     ];
 
     home-manager.users.${cfg.user} = {
-      home.packages = [ cfg.package ];
+      home.packages = [
+        cfg.package
+        pkgs.coreutils
+        pkgs.gnugrep
+        pkgs.gnused
+      ];
 
       home.file = {
         ".config/omarchy/hooks/theme-set.d/hyprchroma" = {
@@ -139,6 +170,15 @@ in
         };
         ".config/omarchy/hooks/font-set.d/hyprchroma" = {
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
+          executable = true;
+        };
+      }
+      // lib.optionalAttrs cfg.electron.apps.vscode.enable {
+        ".config/omarchy/hooks/theme-set.d/hyprchroma-electron-vscode" = {
+          text = ''
+            #!/bin/sh
+            exec ${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode
+          '';
           executable = true;
         };
       };
@@ -176,6 +216,74 @@ in
         '';
       };
 
+      home.activation.nixarchyThemeEngineTerminals = {
+        after = [ "linkGeneration" ];
+        before = [ ];
+        data = ''
+          bridge_terminal_config() {
+            config_path="$1"
+            runtime_path="$2"
+            kind="$3"
+
+            if [ -L "$config_path" ]; then
+              generated_config=$(${pkgs.coreutils}/bin/readlink -f -- "$config_path")
+              temporary_config="$config_path.nixarchy-tmp"
+              run ${pkgs.coreutils}/bin/rm -f -- "$temporary_config"
+              run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$temporary_config"
+              case "$kind" in
+                kitty)
+                  ${pkgs.gnused}/bin/sed -i -E \
+                    's#^[[:space:]]*include[[:space:]].*theme-active\.conf[[:space:]]*$#include ~/.config/omarchy/runtime/kitty.conf#' \
+                    "$temporary_config"
+                  if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/kitty.conf' "$temporary_config"; then
+                    ${pkgs.gnused}/bin/sed -i '$a include ~/.config/omarchy/runtime/kitty.conf' "$temporary_config"
+                  fi
+                  ;;
+                foot)
+                  ${pkgs.gnused}/bin/sed -i -E \
+                    's#^[[:space:]]*include[[:space:]]*=.*theme-active\.ini[[:space:]]*$#include=~/.config/omarchy/runtime/foot.ini#' \
+                    "$temporary_config"
+                  if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/foot.ini' "$temporary_config"; then
+                    ${pkgs.gnused}/bin/sed -i '/^\[main\]$/a include=~/.config/omarchy/runtime/foot.ini' "$temporary_config"
+                  fi
+                  ;;
+                ghostty)
+                  ${pkgs.gnused}/bin/sed -i -E \
+                    's#^[[:space:]]*config-file[[:space:]]*=.*theme-active\.conf[[:space:]]*$#config-file = ~/.config/omarchy/runtime/ghostty.conf#' \
+                    "$temporary_config"
+                  if ! ${pkgs.gnugrep}/bin/grep -Fq 'omarchy/runtime/ghostty.conf' "$temporary_config"; then
+                    ${pkgs.gnused}/bin/sed -i '$a config-file = ~/.config/omarchy/runtime/ghostty.conf' "$temporary_config"
+                  fi
+                  ;;
+              esac
+              run ${pkgs.coreutils}/bin/mv -f -- "$temporary_config" "$config_path"
+            elif [ ! -e "$config_path" ] && command -v "$kind" >/dev/null 2>&1; then
+              temporary_config="$config_path.nixarchy-tmp"
+              run ${pkgs.coreutils}/bin/rm -f -- "$temporary_config"
+              case "$kind" in
+                kitty)
+                  printf '%s\n' 'include ~/.config/omarchy/runtime/kitty.conf' | \
+                    run ${pkgs.coreutils}/bin/install -Dm644 /dev/stdin "$temporary_config"
+                  ;;
+                foot)
+                  printf '%s\n' '[main]' 'include=~/.config/omarchy/runtime/foot.ini' | \
+                    run ${pkgs.coreutils}/bin/install -Dm644 /dev/stdin "$temporary_config"
+                  ;;
+                ghostty)
+                  printf '%s\n' 'config-file = ~/.config/omarchy/runtime/ghostty.conf' | \
+                    run ${pkgs.coreutils}/bin/install -Dm644 /dev/stdin "$temporary_config"
+                  ;;
+              esac
+              run ${pkgs.coreutils}/bin/mv -f -- "$temporary_config" "$config_path"
+            fi
+          }
+
+          ${lib.optionalString cfg.targets.kitty ''bridge_terminal_config "$HOME/.config/kitty/kitty.conf" "$HOME/.config/omarchy/runtime/kitty.conf" kitty''}
+          ${lib.optionalString cfg.targets.foot ''bridge_terminal_config "$HOME/.config/foot/foot.ini" "$HOME/.config/omarchy/runtime/foot.ini" foot''}
+          ${lib.optionalString cfg.targets.ghostty ''bridge_terminal_config "$HOME/.config/ghostty/config" "$HOME/.config/omarchy/runtime/ghostty.conf" ghostty''}
+        '';
+      };
+
       systemd.user.services.hyprchromad = {
         Unit = {
           Description = "Omarchy runtime theme synchronization";
@@ -185,7 +293,9 @@ in
 
         Service = {
           ExecStart = "${cfg.package}/bin/hyprchroma daemon";
-          ExecStartPre = targetCommands;
+          ExecStartPre =
+            targetCommands
+            ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode";
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
           RestartSec = 2;
