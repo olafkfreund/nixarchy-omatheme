@@ -6,6 +6,7 @@
   jq,
   python3,
   src,
+  electronRenderer ? ./hyprchroma-electron,
   terminalRenderer ? ./hyprchroma-terminals,
 }:
 
@@ -89,6 +90,7 @@ stdenvNoCC.mkDerivation {
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done
     install -Dm755 "${terminalRenderer}" "$out/lib/hyprchroma/hyprchroma-terminals"
+    install -Dm755 "${electronRenderer}" "$out/lib/hyprchroma/hyprchroma-electron"
     install -Dm644 share/pear-theme.css.template $out/share/hyprchroma/pear-theme.css.template
     install -Dm755 share/hooks/hyprchroma $out/share/hyprchroma/hooks/hyprchroma
     install -Dm644 packaging/systemd/hyprchromad.service $out/lib/systemd/user/hyprchromad.service

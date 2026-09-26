@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+LIB = Path(__file__).resolve().parent
+STATE = LIB / "hyprchroma-state"
+PALETTE = LIB / "hyprchroma-palette"
+GENERATED = {
+    "editor.background",
+    "editor.foreground",
+    "editor.selectionBackground",
+    "editorCursor.foreground",
+    "editorLineNumber.foreground",
+    "editorLineNumber.activeForeground",
+    "activityBar.background",
+    "sideBar.background",
+    "titleBar.activeBackground",
+    "statusBar.background",
+    "button.background",
+    "focusBorder",
+    "terminal.ansiBlack",
+    "terminal.ansiRed",
+    "terminal.ansiGreen",
+    "terminal.ansiYellow",
+    "terminal.ansiBlue",
+    "terminal.ansiMagenta",
+    "terminal.ansiCyan",
+    "terminal.ansiWhite",
+}
+
+
+def palette() -> dict[str, str]:
+    values = {}
+    result = subprocess.run([str(PALETTE), "--all"], check=True, text=True, capture_output=True)
+    for line in result.stdout.splitlines():
+        key, _, value = line.partition("\t")
+        if key:
+            values[key] = value
+    return values
+
+
+def write_json(path: Path, value: dict) -> None:
+    subprocess.run(
+        [str(STATE), "write-file", "--path", str(path), "--mode", "644"],
+        input=json.dumps(value, indent=2) + "\n",
+        text=True,
+        check=True,
+    )
+
+
+def vscode() -> int:
+    path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Code/User/settings.json"
+    if path.is_symlink():
+        print(f"hyprchroma-electron: refusing store-linked VS Code settings: {path}", file=sys.stderr)
+        return 3
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        print(f"hyprchroma-electron: cannot read {path}: {error}", file=sys.stderr)
+        return 1
+
+    colors = palette()
+    generated = {
+        "editor.background": colors["background"],
+        "editor.foreground": colors["foreground"],
+        "editor.selectionBackground": colors["selection"],
+        "editorCursor.foreground": colors["accent"],
+        "editorLineNumber.foreground": colors["muted"],
+        "editorLineNumber.activeForeground": colors["foreground"],
+        "activityBar.background": colors["dark_background"],
+        "sideBar.background": colors["dark_background"],
+        "titleBar.activeBackground": colors["dark_background"],
+        "statusBar.background": colors["accent"],
+        "button.background": colors["accent"],
+        "focusBorder": colors["accent"],
+        "terminal.ansiBlack": colors["background"],
+        "terminal.ansiRed": colors["red"],
+        "terminal.ansiGreen": colors["green"],
+        "terminal.ansiYellow": colors["yellow"],
+        "terminal.ansiBlue": colors["blue"],
+        "terminal.ansiMagenta": colors["magenta"],
+        "terminal.ansiCyan": colors["blue"],
+        "terminal.ansiWhite": colors["foreground"],
+    }
+    customizations = settings.setdefault("workbench.colorCustomizations", {})
+    if not isinstance(customizations, dict):
+        customizations = {}
+    customizations.update(generated)
+    settings["workbench.colorCustomizations"] = customizations
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(path, settings)
+    print("hyprchroma-electron: VS Code colors synchronized; reload the window if needed")
+    return 0
+
+
+if len(sys.argv) != 2 or sys.argv[1] != "vscode":
+    print("Usage: hyprchroma-electron vscode", file=sys.stderr)
+    raise SystemExit(2)
+raise SystemExit(vscode())

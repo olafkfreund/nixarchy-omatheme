@@ -137,6 +137,14 @@ in
         description = "Render and reload Ghostty's runtime theme file.";
       };
     };
+
+    electron = {
+      apps.vscode.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Synchronize VS Code color customizations at theme changes.";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -162,6 +170,15 @@ in
         };
         ".config/omarchy/hooks/font-set.d/hyprchroma" = {
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
+          executable = true;
+        };
+      }
+      // lib.optionalAttrs cfg.electron.apps.vscode.enable {
+        ".config/omarchy/hooks/theme-set.d/hyprchroma-electron-vscode" = {
+          text = ''
+            #!/bin/sh
+            exec ${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode
+          '';
           executable = true;
         };
       };
@@ -276,7 +293,9 @@ in
 
         Service = {
           ExecStart = "${cfg.package}/bin/hyprchroma daemon";
-          ExecStartPre = targetCommands;
+          ExecStartPre =
+            targetCommands
+            ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode";
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
           RestartSec = 2;
