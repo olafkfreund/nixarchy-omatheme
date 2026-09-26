@@ -67,6 +67,15 @@ stdenvNoCC.mkDerivation {
         '       hyprchroma daemon           watch for changes and keep everything in step\n',
         1,
     )
+    marker = '\npython3 - "$HYPRCHROMA_LIB/hyprchroma-state" "$STATUS_FILE"'
+    if marker not in text:
+        raise SystemExit("hyprchroma status update marker was not found")
+    text = text.replace(
+        marker,
+        '\n"$HYPRCHROMA_LIB/hyprchroma-terminals" all || fail "terminal synchronization failed"'
+        + marker,
+        1,
+    )
     path.write_text(text)
     PY
   '';
