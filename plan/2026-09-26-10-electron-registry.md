@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 10
 spec: spec/2026-09-26-10-electron-registry.md
 ---
