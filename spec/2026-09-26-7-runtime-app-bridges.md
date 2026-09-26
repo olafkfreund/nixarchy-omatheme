@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 7
 intent: intent/2026-09-26-7-runtime-app-bridges.md
 ---
