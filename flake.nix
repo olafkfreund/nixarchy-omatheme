@@ -153,8 +153,8 @@
                   mode =
                     nixarchySystem.config.home-manager.users.test.systemd.user.services.hyprchromad.Service.Environment;
                 };
-                plugin =
-                  noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json";
+                pluginActivation =
+                  noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin;
                 themeHook =
                   noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
                 inherit requiredModeFails;

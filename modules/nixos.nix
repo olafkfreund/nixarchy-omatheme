@@ -133,14 +133,6 @@ in
       home.packages = [ cfg.package ];
 
       home.file = {
-        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/manifest.json".source =
-          "${cfg.pluginPackage}/manifest.json";
-        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/BarWidget.qml".source =
-          "${cfg.pluginPackage}/BarWidget.qml";
-        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/Panel.qml".source =
-          "${cfg.pluginPackage}/Panel.qml";
-        ".config/omarchy/plugins/io.github.nobledoodle.omarchroma/README.md".source =
-          "${cfg.pluginPackage}/README.md";
         ".config/omarchy/hooks/theme-set.d/hyprchroma" = {
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
           executable = true;
@@ -149,6 +141,22 @@ in
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
           executable = true;
         };
+      };
+
+      home.activation.nixarchyThemeEnginePlugin = {
+        after = [ "linkGeneration" ];
+        before = [ ];
+        data = ''
+          plugin_dir="$HOME/.config/omarchy/plugins/io.github.nobledoodle.omarchroma"
+          run ${pkgs.coreutils}/bin/mkdir -p "$plugin_dir"
+          for file in manifest.json BarWidget.qml Panel.qml README.md; do
+            target="$plugin_dir/$file"
+            if [ -L "$target" ]; then
+              run ${pkgs.coreutils}/bin/rm -- "$target"
+            fi
+            run ${pkgs.coreutils}/bin/install -Dm644 "${cfg.pluginPackage}/$file" "$target"
+          done
+        '';
       };
 
       systemd.user.services.hyprchromad = {
