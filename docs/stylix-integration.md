@@ -83,7 +83,8 @@ unsupported and remains inert.
 
 For an application with a native import option, keep the import in the
 Stylix/Home Manager configuration and point it at a user-owned runtime file
-created by a verified adapter:
+created by a separate verified adapter. Hyprchroma does not create an Alacritty
+runtime palette file in this release:
 
 ```nix
 { config, ... }:
@@ -97,16 +98,13 @@ created by a verified adapter:
 The runtime engine may replace that file atomically. It must never replace the
 Stylix-generated wrapper in the Nix store.
 
-For Alacritty, the module copies a Home Manager/Stylix-generated wrapper to a
-regular user-owned file after Home Manager finishes linking the generation.
-This preserves the generated settings and imports while allowing Omarchy's
-theme and font commands to refresh the file without a permission error. A
-subsequent Home Manager activation recreates the wrapper from the declarative
-source before the bridge copies it again.
-
-The current Hyprchroma package does not create an Alacritty runtime import file;
-the example is the ownership pattern for future adapters, not a file supplied
-by this release.
+For Alacritty, the module copies a Home Manager/Stylix-generated symlink target
+to a regular user-owned file after Home Manager finishes linking the generation.
+This preserves the generated settings and imports while allowing an external
+Omarchy hook or user-owned adapter to refresh its own imported file without a
+permission error. A subsequent Home Manager activation recreates the wrapper
+from the declarative source before the bridge copies it again. Existing
+Alacritty windows still need the application’s normal restart/reload behavior.
 
 ## Ownership rules
 

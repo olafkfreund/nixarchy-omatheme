@@ -17,5 +17,6 @@ jobs:
       - run: nix flake check --all-systems --no-build
       - run: nix fmt
       - run: git diff --exit-code
+      - run: nix build .#checks.x86_64-linux.runtime
       - run: nix build .#omarchroma-plugin
       - run: nix build .#hyprchroma
