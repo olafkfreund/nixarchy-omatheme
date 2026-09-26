@@ -125,6 +125,11 @@ stdenvNoCC.mkDerivation {
     ui_marker = (
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
+        '          text: refreshProcess.running\n'
+    )
+    ui_insert = (
+        '        Text {\n'
+        '          visible: !root.guideOpen && root.ready\n'
         '          text: "Shell  Starship " + root.shellLabel("starship")\n'
         '            + "  Bash " + root.shellLabel("bash")\n'
         '            + "  Zsh " + root.shellLabel("zsh")\n'
@@ -136,11 +141,6 @@ stdenvNoCC.mkDerivation {
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
-        '        Text {\n'
-        '          visible: !root.guideOpen && root.ready\n'
-        '          text: refreshProcess.running\n'
-    )
-    ui_insert = (
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
         '          text: "Terminals  Kitty " + root.terminalLabel("kitty")\n'
