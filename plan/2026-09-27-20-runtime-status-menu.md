@@ -22,9 +22,11 @@ schema, QML conventions, and Stylix/no-Stylix behavior unchanged.
 3. Extend the plugin build-time marker checks for the new properties, watcher,
    fallback values, mappings, and UI row → verify upstream source drift fails
    the package build clearly.
-4. Add or extend the smallest fixture check needed for complete, partial,
-   malformed, and missing desktop status data. Avoid a QML test framework →
-   verify the fallback contract without changing runtime synchronization.
+4. Use generated-source marker assertions as the smallest fixture-free check
+   that the complete field mapping and malformed/missing fallback branches are
+   present; do not add a QML test framework because the parser/fallback is
+   embedded in generated QML and has no runtime harness in this repository →
+   verify the fallback implementation without changing runtime synchronization.
 5. Run the full checks and build the plugin package → verify runtime, desktop,
    Electron, module, and plugin checks pass; verify the user NixOS config
    repository remains clean.
