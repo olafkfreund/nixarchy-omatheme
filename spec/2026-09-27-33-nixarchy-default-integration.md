@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 33
 intent: intent/2026-09-27-33-nixarchy-default-integration.md
 ---
