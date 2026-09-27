@@ -53,6 +53,25 @@ let
   ) runtimeTargets;
   shellTargetsEnabled =
     cfg.targets.starship || cfg.targets.bash || cfg.targets.zsh || cfg.targets.fish;
+  pluginEnableScript = pkgs.writeShellScript "nixarchy-theme-engine-enable-plugin" ''
+    set -eu
+
+    plugin_id=io.github.nobledoodle.omarchroma
+    placement='{"section":"right"}'
+
+    for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
+      if command -v omarchy-shell >/dev/null 2>&1; then
+        omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+        if [ "$(omarchy-shell shell enablePlugin "$plugin_id" "$placement" 2>/dev/null || true)" = ok ]; then
+          exit 0
+        fi
+      fi
+      ${pkgs.coreutils}/bin/sleep 1
+    done
+
+    echo "nixarchyThemeEngine: Omarchy Shell did not enable $plugin_id" >&2
+    exit 1
+  '';
 in
 {
   options.programs.nixarchyThemeEngine = {
@@ -409,6 +428,24 @@ in
           SystemCallArchitectures = "native";
           SystemCallFilter = [ "@system-service" ];
           LockPersonality = true;
+        };
+
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+
+      systemd.user.services.nixarchyThemeEnginePlugin = {
+        Unit = {
+          Description = "Enable the Omarchroma theme plugin";
+          PartOf = [ "graphical-session.target" ];
+          After = [ "graphical-session.target" ];
+        };
+
+        Service = {
+          Type = "oneshot";
+          ExecStart = pluginEnableScript;
+          Environment = [
+            "PATH=/run/current-system/sw/bin:/etc/profiles/per-user/${cfg.user}/bin:${pkgs.coreutils}/bin"
+          ];
         };
 
         Install.WantedBy = [ "graphical-session.target" ];

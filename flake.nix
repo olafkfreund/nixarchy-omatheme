@@ -223,6 +223,18 @@
                     noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty.data
                   ) != null;
                 assert
+                  builtins.match ".*install -Dm644.*generated_config.*" (
+                    noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty.data
+                  ) != null;
+                assert
+                  builtins.match ".*io.github.nobledoodle.omarchroma.*" (
+                    noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin.data
+                  ) != null;
+                assert
+                  builtins.match ".*install -Dm644.*" (
+                    noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin.data
+                  ) != null;
+                assert
                   (serviceFor noStylixSystem).Service.Environment == [
                     "NIXARCHY_THEME_ENGINE_MODE=runtime"
                   ];
