@@ -70,6 +70,11 @@ stdenvNoCC.mkDerivation {
         '    return value\n'
         '  }\n'
         '\n'
+        '  function targetShort(name) {\n'
+        '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F" })\n'
+        '    return labels[name] || name\n'
+        '  }\n'
+        '\n'
         '  FileView {\n'
         '    id: electronStatusFile\n'
         '    path: root.stateDir + "/electron.json"\n'
@@ -165,53 +170,57 @@ stdenvNoCC.mkDerivation {
     ui_insert = (
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
-        '          text: "Shell  Starship " + root.shellLabel("starship")\n'
-        '            + "  Bash " + root.shellLabel("bash")\n'
-        '            + "  Zsh " + root.shellLabel("zsh")\n'
-        '            + "  Fish " + root.shellLabel("fish")\n'
+        '          text: "Shell  " + root.targetShort("starship") + " " + root.shellLabel("starship")\n'
+        '            + "  " + root.targetShort("bash") + " " + root.shellLabel("bash")\n'
+        '            + "  " + root.targetShort("zsh") + " " + root.shellLabel("zsh")\n'
+        '            + "  " + root.targetShort("fish") + " " + root.shellLabel("fish")\n'
         '          color: Color.muted\n'
         '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
         '          font.pixelSize: Style.font.caption\n'
         '          width: parent.width\n'
+        '          maximumLineCount: 1\n'
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
-        '          text: "Terminals  Kitty " + root.terminalLabel("kitty")\n'
-        '            + "  Foot " + root.terminalLabel("foot")\n'
-        '            + "  Ghostty " + root.terminalLabel("ghostty")\n'
+        '          text: "Terminals  " + root.targetShort("kitty") + " " + root.terminalLabel("kitty")\n'
+        '            + "  " + root.targetShort("foot") + " " + root.terminalLabel("foot")\n'
+        '            + "  " + root.targetShort("ghostty") + " " + root.terminalLabel("ghostty")\n'
         '          color: Color.muted\n'
         '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
         '          font.pixelSize: Style.font.caption\n'
         '          width: parent.width\n'
+        '          maximumLineCount: 1\n'
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
-        '          text: "Electron  VS Code " + root.electronLabel("vscode")\n'
-        '            + "  Discord " + root.electronLabel("discord")\n'
-        '            + "  Slack " + root.electronLabel("slack")\n'
-        '            + "  Obsidian " + root.electronLabel("obsidian")\n'
+        '          text: "Electron  " + root.targetShort("vscode") + " " + root.electronLabel("vscode")\n'
+        '            + "  " + root.targetShort("discord") + " " + root.electronLabel("discord")\n'
+        '            + "  " + root.targetShort("slack") + " " + root.electronLabel("slack")\n'
+        '            + "  " + root.targetShort("obsidian") + " " + root.electronLabel("obsidian")\n'
         '          color: Color.muted\n'
         '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
         '          font.pixelSize: Style.font.caption\n'
         '          width: parent.width\n'
+        '          maximumLineCount: 1\n'
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
-        '          text: "Desktop  GTK " + root.desktopLabel("gtk")\n'
-        '            + "  Qt/KDE " + root.desktopLabel("qtKde")\n'
-        '            + "  Dark Reader " + root.desktopLabel("darkReader")\n'
-        '            + "  Pear " + root.desktopLabel("pearDesktop")\n'
-        '            + "  Flatpak " + root.desktopLabel("flatpak")\n'
+        '          text: "Desktop  " + root.targetShort("gtk") + " " + root.desktopLabel("gtk")\n'
+        '            + "  " + root.targetShort("qtKde") + " " + root.desktopLabel("qtKde")\n'
+        '            + "  " + root.targetShort("darkReader") + " " + root.desktopLabel("darkReader")\n'
+        '            + "  " + root.targetShort("pearDesktop") + " " + root.desktopLabel("pearDesktop")\n'
+        '            + "  " + root.targetShort("flatpak") + " " + root.desktopLabel("flatpak")\n'
         '          color: Color.muted\n'
         '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
         '          font.pixelSize: Style.font.caption\n'
         '          width: parent.width\n'
+        '          maximumLineCount: 1\n'
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
@@ -235,7 +244,20 @@ stdenvNoCC.mkDerivation {
             '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
             "desktop status fallback marker was not inserted",
         ),
-        ('          text: "Desktop  GTK " + root.desktopLabel("gtk")\n', "desktop status UI marker was not inserted"),
+        (
+            '          text: "Desktop  " + root.targetShort("gtk") + " " + root.desktopLabel("gtk")\n',
+            "desktop status UI marker was not inserted",
+        ),
+        (
+            '  function targetShort(name) {\n'
+            '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F" })\n',
+            "target abbreviation helper marker was not inserted",
+        ),
+        (
+            '          text: "Shell  " + root.targetShort("starship") + " " + root.shellLabel("starship")\n',
+            "compact shell status UI marker was not inserted",
+        ),
+        ('          maximumLineCount: 1\n          elide: Text.ElideRight\n', "single-line status UI marker was not inserted"),
     ):
         if marker not in text:
             raise SystemExit(message)
