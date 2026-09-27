@@ -79,6 +79,9 @@
             stylixProbeModule
             { programs.nixarchyThemeEngine.stylix.mode = "runtime"; }
           ];
+          externallyManagedPluginSystem = makeTestSystem [
+            { programs.nixarchyThemeEngine.managePlugin = false; }
+          ];
           targetSystem = makeTestSystem [
             {
               programs.nixarchyThemeEngine.targets = {
@@ -234,6 +237,12 @@
                   builtins.match ".*install -Dm644.*" (
                     noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin.data
                   ) != null;
+                assert
+                  !(builtins.hasAttr "nixarchyThemeEnginePlugin" externallyManagedPluginSystem.config.home-manager.users.test.home.activation);
+                assert builtins.hasAttr "nixarchyThemeEnginePlugin"
+                  externallyManagedPluginSystem.config.home-manager.users.test.systemd.user.services;
+                assert builtins.hasAttr "hyprchromad"
+                  externallyManagedPluginSystem.config.home-manager.users.test.systemd.user.services;
                 assert
                   (serviceFor noStylixSystem).Service.Environment == [
                     "NIXARCHY_THEME_ENGINE_MODE=runtime"
