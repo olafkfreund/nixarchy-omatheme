@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 33
 author: olafkfreund
 upstream-issue: https://github.com/olafkfreund/nixarchy/issues/1023
