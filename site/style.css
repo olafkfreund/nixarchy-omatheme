@@ -32,13 +32,16 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 }
 
 .logo {
+  display: block;
   max-width: 100%;
   margin: 0 auto 1.5rem;
-  overflow-x: auto;
+  overflow: visible;
+  padding: 0;
+  background: none;
   color: var(--accent);
-  font: 600 clamp(0.45rem, 1.55vw, 1rem)/1.09375 var(--mono);
+  font: 600 clamp(0.3rem, 1.05vw, 0.88rem)/1.09375 var(--mono);
   letter-spacing: -0.0425em;
-  text-align: left;
+  text-align: center;
   white-space: pre;
 }
 
