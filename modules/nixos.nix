@@ -95,6 +95,17 @@ in
       description = "Omarchy bar plugin for the runtime theme engine.";
     };
 
+    managePlugin = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Install the Omarchroma plugin files through this module. Set to false
+        when another declarative owner, such as Nixarchy's default plugin set,
+        installs the same manifest. The runtime enablement service remains
+        active when this is false.
+      '';
+    };
+
     stylix.mode = lib.mkOption {
       type = lib.types.enum [
         "auto"
@@ -275,7 +286,7 @@ in
         ''
       );
 
-      home.activation.nixarchyThemeEnginePlugin = {
+      home.activation.nixarchyThemeEnginePlugin = lib.mkIf cfg.managePlugin {
         after = [ "linkGeneration" ];
         before = [ ];
         data = ''
