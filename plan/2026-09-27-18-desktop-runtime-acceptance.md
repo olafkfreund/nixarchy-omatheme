@@ -27,10 +27,11 @@ only provide an installed-target smoke check.
 4. Add only the documentation or status-output clarification required by the
    observed behavior; keep Stylix optional and preserve existing target matrix
    semantics → verify `git diff --check` and no user NixOS config changes.
-5. Run the full local checks, then run the Razer smoke check against the exact
-   commit and capture target availability/status without installing software or
-   changing Flatpak permissions → verify existing runtime, Electron, module,
-   and new desktop checks all pass and the NixOS config repository is clean.
+5. Run the full local checks, then verify the exact built package on Razer and
+   read the existing target status/prerequisites without toggling live targets,
+   installing software, or changing Flatpak permissions → verify existing
+   runtime, Electron, module, and new desktop checks all pass and the NixOS
+   config repository is clean.
 
 ## Tests
 
@@ -39,7 +40,8 @@ only provide an installed-target smoke check.
 - `nix build .#checks.x86_64-linux.runtime`
 - `nix build .#checks.x86_64-linux.electron`
 - `nix build .#checks.x86_64-linux.module`
-- Razer host smoke command using the built package and isolated target state.
+- Razer host smoke: built package version check plus read-only target status and
+  prerequisite inspection.
 
 Expected result: all deterministic checks pass; Razer reports only the targets
 available on that host and does not modify `/home/olafkfreund/.config/nixos`.

@@ -157,9 +157,28 @@
                   ${pkgs.bash}/bin/bash ${./tests/electron-runtime.sh}
                 touch $out
               '';
+          desktopRuntimeTest =
+            pkgs.runCommand "nixarchy-omatheme-desktop-runtime"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gawk
+                  pkgs.glib
+                  pkgs.jq
+                  pkgs.python3
+                  pkgs.util-linux
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  ${pkgs.bash}/bin/bash ${./tests/desktop-runtime.sh}
+                touch $out
+              '';
         in
         {
           package = self.packages.${system}.default;
+          desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
           module =
