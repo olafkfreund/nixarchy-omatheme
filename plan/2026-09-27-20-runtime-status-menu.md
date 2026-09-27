@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 20
 spec: spec/2026-09-27-20-runtime-status-menu.md
 ---
