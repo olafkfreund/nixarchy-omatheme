@@ -34,6 +34,7 @@ stdenvNoCC.mkDerivation {
         '  property var terminalStatus: ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })\n'
         '  property var electronStatus: ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })\n'
         '  property var shellStatus: ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })\n'
+        '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
         '\n'
         '  function terminalLabel(name) {\n'
         '    var value = root.terminalStatus[name] || "unknown"\n'
@@ -57,6 +58,15 @@ stdenvNoCC.mkDerivation {
         '    var value = root.shellStatus[name] || "unknown"\n'
         '    if (value === "prompt-refresh") return "live"\n'
         '    if (value === "unavailable") return "n/a"\n'
+        '    return value\n'
+        '  }\n'
+        '\n'
+        '  function desktopLabel(name) {\n'
+        '    var value = root.desktopStatus[name] || "unknown"\n'
+        '    if (value === "synchronized") return "synced"\n'
+        '    if (value === "not-installed") return "unavailable"\n'
+        '    if (value === "restart-required") return "restart"\n'
+        '    if (value === "disabled") return "off"\n'
         '    return value\n'
         '  }\n'
         '\n'
@@ -121,6 +131,28 @@ stdenvNoCC.mkDerivation {
         '    }\n'
         '    onLoadFailed: root.shellStatus = ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })\n'
         '  }\n'
+        '\n'
+        '  FileView {\n'
+        '    id: desktopStatusFile\n'
+        '    path: root.stateDir + "/status.json"\n'
+        '    printErrors: false\n'
+        '    watchChanges: true\n'
+        '    onLoaded: {\n'
+        '      try {\n'
+        '        var parsed = JSON.parse(text())\n'
+        '        root.desktopStatus = {\n'
+        '          gtk: String(parsed.gtk || "unknown"),\n'
+        '          qtKde: String(parsed.qtKde || "unknown"),\n'
+        '          darkReader: String(parsed.darkReader || "unknown"),\n'
+        '          pearDesktop: String(parsed.pearDesktop || "unknown"),\n'
+        '          flatpak: String(parsed.flatpak || "unknown")\n'
+        '        }\n'
+        '      } catch (error) {\n'
+        '        root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
+        '      }\n'
+        '    }\n'
+        '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
+        '  }\n'
     )
     if property_marker not in text:
         raise SystemExit("terminal status property marker was not found")
@@ -169,10 +201,44 @@ stdenvNoCC.mkDerivation {
         '          elide: Text.ElideRight\n'
         '        }\n'
         '\n'
+        '        Text {\n'
+        '          visible: !root.guideOpen && root.ready\n'
+        '          text: "Desktop  GTK " + root.desktopLabel("gtk")\n'
+        '            + "  Qt/KDE " + root.desktopLabel("qtKde")\n'
+        '            + "  Dark Reader " + root.desktopLabel("darkReader")\n'
+        '            + "  Pear " + root.desktopLabel("pearDesktop")\n'
+        '            + "  Flatpak " + root.desktopLabel("flatpak")\n'
+        '          color: Color.muted\n'
+        '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
+        '          font.pixelSize: Style.font.caption\n'
+        '          width: parent.width\n'
+        '          elide: Text.ElideRight\n'
+        '        }\n'
+        '\n'
     ) + ui_marker
     if ui_marker not in text:
         raise SystemExit("terminal status UI marker was not found")
     text = text.replace(ui_marker, ui_insert, 1)
+    for marker, message in (
+        (
+            '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
+            "desktop status property marker was not inserted",
+        ),
+        (
+            '    id: desktopStatusFile\n'
+            '    path: root.stateDir + "/status.json"\n'
+            '    printErrors: false\n'
+            '    watchChanges: true\n',
+            "desktop status watcher marker was not inserted",
+        ),
+        (
+            '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
+            "desktop status fallback marker was not inserted",
+        ),
+        ('          text: "Desktop  GTK " + root.desktopLabel("gtk")\n', "desktop status UI marker was not inserted"),
+    ):
+        if marker not in text:
+            raise SystemExit(message)
     panel.write_text(text)
     PY
   '';
