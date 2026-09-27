@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 28
 intent: intent/2026-09-27-28-nixarchy-voice-pages.md
 ---
