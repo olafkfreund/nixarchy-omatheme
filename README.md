@@ -66,6 +66,9 @@ offline ISO.
 
 The module installs `hyprchromad` as a user service and places the Omarchy
 plugin and theme hooks under the selected user's Home Manager configuration.
+At graphical-session startup it rescans and enables the Omarchroma bar widget
+through Omarchy Shell's plugin registry, preserving the user's existing bar
+layout.
 Apply it with the normal NixOS workflow:
 
 ```sh
@@ -75,6 +78,13 @@ omarchy theme set nord
 
 The theme command is runtime-only. It does not require a rebuild or a second
 declarative theme definition.
+
+Alacritty is handled at the ownership boundary: if Home Manager or Stylix
+created `~/.config/alacritty/alacritty.toml` as a symlink, activation copies
+its generated contents to a regular user-owned file before Omarchy theme hooks
+run. Runtime imports continue to point at mutable files under
+`~/.config/omarchy/runtime/`, so a theme switch does not try to write into the
+Nix store.
 
 ## Theme integration modes
 
