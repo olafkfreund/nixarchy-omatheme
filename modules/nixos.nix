@@ -203,7 +203,10 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  # Home Manager owns every user-facing file and user service in this module.
+  # Keep the NixOS option surface importable on its own; Nixarchy evaluates its
+  # system module independently before a host adds Home Manager.
+  config = lib.mkIf (cfg.enable && options ? home-manager) {
     assertions = [
       {
         assertion = cfg.stylix.mode != "stylix" || stylixModuleImported;
