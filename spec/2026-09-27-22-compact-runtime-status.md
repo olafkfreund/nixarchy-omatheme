@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 22
 intent: intent/2026-09-27-22-compact-runtime-status.md
 ---
