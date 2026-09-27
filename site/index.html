@@ -3,48 +3,98 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="NixOS integration for an Omarchy-compatible runtime theme engine.">
+    <meta name="description" content="A NixOS-native Omarchy theme engine with Stylix templates and live runtime switching.">
     <title>nixarchy-omatheme</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <main>
-      <nav><span class="mark">❄</span><span>nixarchy / omatheme</span><a href="https://github.com/olafkfreund/nixarchy-omatheme">GitHub ↗</a></nav>
+    <header class="masthead">
+      <pre class="logo" role="img" aria-label="omatheme"> ██████  ███▄    █  ▄▄▄▄▄▄▄▄▄▄▄  ██████  ██░ ██ ▓█████  ███▄    █ ▓█████
+▒██    ▒  ██ ▀█   █ ▓  ██ ▀█   █ ▒██    ▒ ▓██░ ██▒▓█   ▀  ██ ▀█   █ ▓█   ▀
+░ ▓██▄   ▓██  ▀█ ██▒░ ▓██▄ ▄█▀░ ░ ▓██▄   ▒██▀▀██░▒███   ▓██  ▀█ ██▒▒███
+  ▒   ██▒▒██▒  ▐▌██▒  ▒██▀▀█▄     ▒   ██▒░▓█ ░██ ▒▓█  ▄ ▒██▒  ▐▌██▒▒▓█  ▄
+▒██████▒▒░██░   ▓██░  ░██▓ ▒██▒▒██████▒▒░▓█▒░██▓░▒████▒░██░   ▓██░░▒████▒
+▒ ▒▓▒ ▒ ░░ ▒░   ▒ ▒   ░ ▒▓ ░▒▓░▒ ▒▓▒ ▒ ░ ▒ ░░▒░▒░░ ▒░ ░░ ▒░   ▒ ▒ ░░ ▒░ ░
+░ ░▒  ░ ░░ ░░   ░ ▒░    ░▒ ░ ▒░░ ░▒  ░ ░ ▒ ░▒░ ░ ░ ░  ░░ ░░   ░ ▒░ ░ ░  ░
+░  ░  ░     ░   ░ ░     ░░   ░ ░  ░  ░   ░  ░░ ░   ░      ░   ░ ░    ░
+      ░           ░      ░           ░   ░  ░  ░   ░  ░         ░    ░  ░</pre>
+      <p class="tagline"><a href="https://github.com/olafkfreund/nixarchy-omatheme">Runtime themes for NixOS</a></p>
+      <nav class="mast-nav" aria-label="Primary navigation">
+        <a href="https://github.com/olafkfreund/nixarchy-omatheme#add-it-to-a-flake">Manual</a>
+        <a href="https://github.com/olafkfreund/nixarchy-omatheme">GitHub</a>
+        <a href="https://github.com/olafkfreund/nixarchy-omatheme/issues">Issues</a>
+        <a href="https://github.com/olafkfreund/nixarchy">Nixarchy</a>
+      </nav>
+    </header>
 
-      <section class="hero">
-        <p class="eyebrow">NIXOS × OMARCHY × STYLIX</p>
-        <h1>One palette.<br><em>Every surface.</em></h1>
-        <p class="lede">Live Omarchy theme switching, packaged as a native NixOS module. Declarative where it should be. Instant where it matters.</p>
-        <div class="actions"><a class="button" href="https://github.com/olafkfreund/nixarchy-omatheme#add-it-to-a-flake">Add to a flake</a><a class="text-link" href="https://github.com/olafkfreund/nixarchy-omatheme">Read the source →</a></div>
+    <main class="content content--centred">
+      <section class="intro" aria-labelledby="page-title">
+        <h1 id="page-title">One palette. Every surface.</h1>
+        <p>nixarchy-omatheme connects declarative NixOS configuration with the rebuild-free theme switching of Omarchy. Stylix can keep defining the application templates; the runtime engine changes the active palette everywhere at once.</p>
+        <div class="cta">
+          <a class="cta-button" href="https://github.com/olafkfreund/nixarchy-omatheme#add-it-to-a-flake">Add to a flake</a>
+          <a href="https://github.com/olafkfreund/nixarchy-omatheme">Read the source →</a>
+        </div>
       </section>
 
-      <section class="grid three">
-        <article><span class="number">01</span><h2>Declare</h2><p>Install the engine, daemon, plugin, and hooks through one NixOS module.</p></article>
-        <article><span class="number">02</span><h2>Switch</h2><p>Use the familiar <code>omarchy theme set</code> command without rebuilding.</p></article>
-        <article><span class="number">03</span><h2>Sync</h2><p>Let the runtime palette update the desktop while Stylix keeps templates reproducible.</p></article>
+      <pre class="exchange"><code><span class="prompt">$</span> nixos-rebuild switch --flake .
+<span class="prompt">$</span> omarchy theme set everforest
+<span class="success">✓</span> palette updated
+<span class="success">✓</span> applications notified</code></pre>
+
+      <section aria-labelledby="integration-title">
+        <h2 id="integration-title">NixOS integration</h2>
+        <p>Enable one module in the system flake. It installs the runtime engine, daemon, Omarchy menu plugin, and application hooks for the configured user.</p>
+        <pre><code><span class="keyword">programs</span>.nixarchyThemeEngine = {
+  enable = <span class="value">true</span>;
+  user = <span class="string">"olafkfreund"</span>;
+};</code></pre>
+        <p>Apply it once with the normal NixOS workflow. After that, changing a theme is a runtime operation and does not require another rebuild.</p>
       </section>
 
-      <section class="split">
-        <div><p class="eyebrow">THE BOUNDARY</p><h2>Stylix draws the map.<br>Omarchy moves the light.</h2></div>
-        <div class="terminal"><div><i></i><i></i><i></i><span>nixarchy-omatheme</span></div><pre><code><b>programs</b>.nixarchyThemeEngine = {
-  enable = <strong>true</strong>;
-  user = <strong>"olafkfreund"</strong>;
-};
-
-$ omarchy theme set tokyo-night
-  ✓ palette updated
-  ✓ applications notified</code></pre></div>
+      <section aria-labelledby="stylix-title">
+        <h2 id="stylix-title">Stylix is the template</h2>
+        <p>When Stylix is present, it remains the declarative source for the application settings it supports. nixarchy-omatheme adds mutable runtime imports and reload hooks at the ownership boundary.</p>
+        <blockquote>Stylix defines the reproducible shape. Omarchy owns the active palette and the live reload event.</blockquote>
+        <p>When Stylix is absent, the same module uses the runtime engine’s renderers. This keeps the path suitable for the Nixarchy offline ISO without making Stylix a requirement.</p>
       </section>
 
-      <section class="showcase">
-        <div class="showcase-heading"><p class="eyebrow">LIVE ON RAZER</p><h2>Switch once.<br><em>See it everywhere.</em></h2><p>Captured on Nixarchy with the Omarchroma panel, a running daemon, and a rebuild-free Tokyo Night → Everforest switch.</p></div>
-        <video controls preload="metadata" poster="media/omarchroma-tokyo-night.png"><source src="media/omarchroma-switch.mp4" type="video/mp4">Your browser does not support embedded video.</video>
-        <div class="frames"><figure><img src="media/omarchroma-tokyo-night.png" alt="Omarchroma panel on a Tokyo Night desktop"><figcaption>Before · Tokyo Night</figcaption></figure><figure><img src="media/omarchroma-everforest.png" alt="Omarchroma panel on an Everforest desktop"><figcaption>After · Everforest</figcaption></figure></div>
+      <section aria-labelledby="targets-title">
+        <h2 id="targets-title">Runtime targets</h2>
+        <p>The current bridges cover GTK, Qt/KDE, Dark Reader, Pear Desktop, Starship, Bash, Zsh, Fish, Alacritty, Kitty, Foot, Ghostty, and opt-in Flatpak support. VS Code is available through an opt-in Electron adapter.</p>
+        <pre><code><span class="keyword">programs</span>.nixarchyThemeEngine.electron.apps.vscode.enable = <span class="value">true</span>;</code></pre>
       </section>
 
-      <section class="strip"><span>runtime source of truth</span><span>•</span><span>rebuild-free switching</span><span>•</span><span>NixOS-native packaging</span></section>
+      <section aria-labelledby="setup-title">
+        <h2 id="setup-title">Setup and ownership</h2>
+        <p>Use <a href="https://github.com/olafkfreund/nixarchy-omatheme#add-it-to-a-flake"><code>programs.nixarchyThemeEngine</code></a> in a NixOS flake. The default mode detects whether the Stylix module is imported; set <code>stylix.mode = "runtime"</code> for a Stylix-free system or <code>"stylix"</code> to require it.</p>
+        <blockquote>Generated configuration stays declarative. Runtime files live under <code>~/.config/omarchy/runtime/</code> so application reloads do not fight Home Manager ownership.</blockquote>
+        <p>Alacritty receives the same ownership transition when its generated file is a Home Manager or Stylix symlink. The activation copies the generated contents to a user-owned runtime file before theme hooks run.</p>
+      </section>
 
-      <footer><span>MIT · early stage</span><span>Built for Nixarchy</span></footer>
+      <section class="showcase" aria-labelledby="showcase-title">
+        <h2 id="showcase-title">Switch once. See it everywhere.</h2>
+        <p>Captured on a Razer desktop with the Omarchroma panel, a running daemon, and a rebuild-free Tokyo Night → Everforest switch.</p>
+        <video controls preload="metadata" poster="media/omarchroma-tokyo-night.png">
+          <source src="media/omarchroma-switch.mp4" type="video/mp4">
+          Your browser does not support embedded video. <a href="media/omarchroma-switch.mp4">Download the demo.</a>
+        </video>
+        <div class="frames">
+          <figure>
+            <img src="media/omarchroma-tokyo-night.png" alt="Omarchroma panel on a Tokyo Night desktop">
+            <figcaption>Before · Tokyo Night</figcaption>
+          </figure>
+          <figure>
+            <img src="media/omarchroma-everforest.png" alt="Omarchroma panel on an Everforest desktop">
+            <figcaption>After · Everforest</figcaption>
+          </figure>
+        </div>
+      </section>
     </main>
+
+    <footer class="eyebrow">MIT · early stage · Built for Nixarchy</footer>
   </body>
 </html>
