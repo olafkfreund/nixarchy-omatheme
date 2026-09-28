@@ -11,7 +11,11 @@ The intent was approved on 2026-09-28 with the recommended answers:
 | # | Question | Decision |
 | --- | --- | --- |
 | 1 | Where the palette table goes | At the **end** of the generated file |
-| 2 | How the test checks it | Parse with Python's `tomllib` and check where keys land. starship is only a stub (`exit 0`) in `tests/runtime-targets.sh`, so there is no real starship run. `python3` is already in the check's `nativeBuildInputs` |
+| 2 | How the test checks it | Python's `tomllib`, checking where keys land |
+
+There is no real starship run for decision 2: starship is only a stub
+(`exit 0`) in `tests/runtime-targets.sh`. `python3` is already in the check's
+`nativeBuildInputs`.
 
 ## Design
 
