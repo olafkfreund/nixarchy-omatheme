@@ -114,6 +114,7 @@ test -f "$config/omarchy/runtime/foot.ini"
 test -f "$config/omarchy/runtime/ghostty.conf"
 test -f "$state/hyprchroma/shell.json"
 test -f "$state/hyprchroma/terminals.json"
+foot --check-config --config="$config/omarchy/runtime/foot.ini"
 
 grep -Fq 'palette = "hyprchroma"' "$config/omarchy/runtime/starship.toml"
 grep -Fq 'format = "$directory"' "$config/omarchy/runtime/starship.toml"
