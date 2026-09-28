@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 43
 intent: intent/2026-09-28-43-starship-palette-order.md
 ---
