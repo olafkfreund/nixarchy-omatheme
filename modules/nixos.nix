@@ -57,23 +57,35 @@ let
   ) runtimeTargets;
   shellTargetsEnabled =
     cfg.targets.starship || cfg.targets.bash || cfg.targets.zsh || cfg.targets.fish;
+  # A plugin-heavy shell answers IPC slower than omarchy-shell's 2 s default
+  # right after a switch, and every rescan makes it slower still, so the old
+  # 30 x (rescan + 2 s call) loop could hold Home Manager for minutes (#45).
   pluginEnableScript = pkgs.writeShellScript "nixarchy-theme-engine-enable-plugin" ''
-    set -eu
+    set -u
+    export OMARCHY_SHELL_IPC_TIMEOUT=15s
 
     plugin_id=io.github.nobledoodle.omarchroma
     placement='{"section":"right"}'
 
-    for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
-      if command -v omarchy-shell >/dev/null 2>&1; then
-        omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-        if [ "$(omarchy-shell shell enablePlugin "$plugin_id" "$placement" 2>/dev/null || true)" = ok ]; then
-          exit 0
-        fi
+    if ! command -v omarchy-shell >/dev/null 2>&1; then
+      echo "nixarchyThemeEngine: omarchy-shell not found" >&2
+      exit 1
+    fi
+
+    omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+    delay=1
+    for attempt in 1 2 3 4 5; do
+      reply=$(omarchy-shell shell enablePlugin "$plugin_id" "$placement" 2>/dev/null || true)
+      if [ "$reply" = ok ]; then
+        exit 0
       fi
-      ${pkgs.coreutils}/bin/sleep 1
+      if [ "$attempt" != 5 ]; then
+        ${pkgs.coreutils}/bin/sleep "$delay"
+        delay=$((delay * 2))
+      fi
     done
 
-    echo "nixarchyThemeEngine: Omarchy Shell did not enable $plugin_id" >&2
+    echo "nixarchyThemeEngine: Omarchy Shell did not enable $plugin_id after 5 attempts" >&2
     exit 1
   '';
 in
@@ -299,6 +311,16 @@ in
         ''
       );
 
+      home.activation.nixarchyThemeEnginePluginKick = lib.mkIf cfg.managePlugin {
+        after = [ "reloadSystemd" ];
+        before = [ ];
+        data = ''
+          if systemctl --user is-active --quiet graphical-session.target; then
+            run systemctl --user start --no-block nixarchyThemeEnginePlugin.service || true
+          fi
+        '';
+      };
+
       home.activation.nixarchyThemeEnginePlugin = lib.mkIf cfg.managePlugin {
         after = [ "linkGeneration" ];
         before = [ ];
@@ -462,11 +484,15 @@ in
           Description = "Enable the Omarchroma theme plugin";
           PartOf = [ "graphical-session.target" ];
           After = [ "graphical-session.target" ];
+          # sd-switch must not start and wait for this oneshot during Home
+          # Manager activation; the activation kick below queues it instead.
+          X-SwitchMethod = "keep-old";
         };
 
         Service = {
           Type = "oneshot";
           ExecStart = pluginEnableScript;
+          TimeoutStartSec = 90;
           Environment = [
             "PATH=/run/current-system/sw/bin:/etc/profiles/per-user/${cfg.user}/bin:${pkgs.coreutils}/bin"
           ];
