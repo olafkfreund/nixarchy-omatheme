@@ -1,0 +1,272 @@
+--- a/Panel.qml
++++ b/Panel.qml
+@@ -190,6 +190,24 @@
+   }
+ 
+   Process {
++    id: paletteActionProcess
++    environment: ({ PATH: root.trustedPath })
++    onExited: function(code) {
++      root.paletteActionMessage = code === 0
++        ? root.paletteActionLabel + " complete"
++        : root.paletteActionLabel + " failed"
++      root.refreshStaleApps()
++    }
++  }
++
++  function runPaletteAction(command, label) {
++    if (paletteActionProcess.running) return
++    root.paletteActionLabel = label
++    paletteActionProcess.command = command
++    paletteActionProcess.running = true
++  }
++
++  Process {
+     id: restoreProcess
+     environment: ({ PATH: root.trustedPath })
+     onExited: settingsFile.reload()
+@@ -270,6 +288,137 @@
+   readonly property int staleShown: 8
+ 
+   property string activeTarget: ""
++  property string paletteActionMessage: ""
++  property string paletteActionLabel: ""
++  property var terminalStatus: ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })
++  property var electronStatus: ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })
++  property var shellStatus: ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })
++  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })
++
++  function terminalLabel(name) {
++    var value = root.terminalStatus[name] || "unknown"
++    if (value === "synchronized") return "synced"
++    if (value === "new-windows-only") return "new"
++    if (value === "restart-required") return "restart"
++    return value
++  }
++
++  function electronLabel(name) {
++    var value = root.electronStatus[name] || "unknown"
++    if (value === "restart-required") return "restart"
++    if (value === "unsupported") return "unsupported"
++    if (value === "unavailable") return "unavailable"
++    if (value === "refused") return "refused"
++    if (value === "supported") return "available"
++    return value
++  }
++
++  function shellLabel(name) {
++    var value = root.shellStatus[name] || "unknown"
++    if (value === "prompt-refresh") return "live"
++    if (value === "unavailable") return "n/a"
++    return value
++  }
++
++  function desktopLabel(name) {
++    var value = root.desktopStatus[name] || "unknown"
++    if (value === "synchronized") return "synced"
++    if (value === "not-installed") return "unavailable"
++    if (value === "restart-required") return "restart"
++    if (value === "pending") return "next launch"
++    if (value === "disabled") return "off"
++    return value
++  }
++
++  function targetShort(name) {
++    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F", browsers: "B" })
++    return labels[name] || name
++  }
++
++  FileView {
++    id: electronStatusFile
++    path: root.stateDir + "/electron.json"
++    printErrors: false
++    watchChanges: true
++    onLoaded: {
++      try {
++        var parsed = JSON.parse(text())
++        root.electronStatus = {
++          vscode: String(parsed.vscode || "unknown"),
++          discord: String(parsed.discord || "unsupported"),
++          slack: String(parsed.slack || "unsupported"),
++          obsidian: String(parsed.obsidian || "unsupported")
++        }
++      } catch (error) {
++        root.electronStatus = ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })
++      }
++    }
++    onLoadFailed: root.electronStatus = ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })
++  }
++
++  FileView {
++    id: terminalStatusFile
++    path: root.stateDir + "/terminals.json"
++    printErrors: false
++    watchChanges: true
++    onLoaded: {
++      try {
++        var parsed = JSON.parse(text())
++        root.terminalStatus = {
++          kitty: String(parsed.kitty || "unknown"),
++          foot: String(parsed.foot || "unknown"),
++          ghostty: String(parsed.ghostty || "unknown")
++        }
++      } catch (error) {
++        root.terminalStatus = ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })
++      }
++    }
++    onLoadFailed: root.terminalStatus = ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })
++  }
++
++  FileView {
++    id: shellStatusFile
++    path: root.stateDir + "/shell.json"
++    printErrors: false
++    watchChanges: true
++    onLoaded: {
++      try {
++        var parsed = JSON.parse(text())
++        root.shellStatus = {
++          starship: String(parsed.starship || "unknown"),
++          bash: String(parsed.bash || "unknown"),
++          zsh: String(parsed.zsh || "unknown"),
++          fish: String(parsed.fish || "unknown")
++        }
++      } catch (error) {
++        root.shellStatus = ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })
++      }
++    }
++    onLoadFailed: root.shellStatus = ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })
++  }
++
++  FileView {
++    id: desktopStatusFile
++    path: root.stateDir + "/status.json"
++    printErrors: false
++    watchChanges: true
++    onLoaded: {
++      try {
++        var parsed = JSON.parse(text())
++        root.desktopStatus = {
++          gtk: String(parsed.gtk || "unknown"),
++          qtKde: String(parsed.qtKde || "unknown"),
++          darkReader: String(parsed.darkReader || "unknown"),
++          pearDesktop: String(parsed.pearDesktop || "unknown"),
++          flatpak: String(parsed.flatpak || "unknown"),
++          browsers: String(parsed.browsers || "unknown")
++        }
++      } catch (error) {
++        root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })
++      }
++    }
++    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })
++  }
+ 
+   // One list drives both the rows and the keyboard shortcuts, so the digit a
+   // row shows is always the digit that toggles it.
+@@ -692,6 +841,63 @@
+ 
+         Text {
+           visible: !root.guideOpen && root.ready
++          text: "Shell  " + root.targetShort("starship") + " " + root.shellLabel("starship")
++            + "  " + root.targetShort("bash") + " " + root.shellLabel("bash")
++            + "  " + root.targetShort("zsh") + " " + root.shellLabel("zsh")
++            + "  " + root.targetShort("fish") + " " + root.shellLabel("fish")
++          color: Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          width: parent.width
++          maximumLineCount: 1
++          elide: Text.ElideRight
++        }
++
++        Text {
++          visible: !root.guideOpen && root.ready
++          text: "Terminals  " + root.targetShort("kitty") + " " + root.terminalLabel("kitty")
++            + "  " + root.targetShort("foot") + " " + root.terminalLabel("foot")
++            + "  " + root.targetShort("ghostty") + " " + root.terminalLabel("ghostty")
++          color: Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          width: parent.width
++          maximumLineCount: 1
++          elide: Text.ElideRight
++        }
++
++        Text {
++          visible: !root.guideOpen && root.ready
++          text: "Electron  " + root.targetShort("vscode") + " " + root.electronLabel("vscode")
++            + "  " + root.targetShort("discord") + " " + root.electronLabel("discord")
++            + "  " + root.targetShort("slack") + " " + root.electronLabel("slack")
++            + "  " + root.targetShort("obsidian") + " " + root.electronLabel("obsidian")
++          color: Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          width: parent.width
++          maximumLineCount: 1
++          elide: Text.ElideRight
++        }
++
++        Text {
++          visible: !root.guideOpen && root.ready
++          text: "Desktop  " + root.targetShort("gtk") + " " + root.desktopLabel("gtk")
++            + "  " + root.targetShort("qtKde") + " " + root.desktopLabel("qtKde")
++            + "  " + root.targetShort("darkReader") + " " + root.desktopLabel("darkReader")
++            + "  " + root.targetShort("pearDesktop") + " " + root.desktopLabel("pearDesktop")
++            + "  " + root.targetShort("flatpak") + " " + root.desktopLabel("flatpak")
++            + "  " + root.targetShort("browsers") + " " + root.desktopLabel("browsers")
++          color: Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          width: parent.width
++          maximumLineCount: 1
++          elide: Text.ElideRight
++        }
++
++        Text {
++          visible: !root.guideOpen && root.ready
+           text: refreshProcess.running
+             ? (root.targetEnabled(root.activeTarget)
+                 ? "Synchronizing " + root.activeTarget + "..."
+@@ -806,6 +1012,42 @@
+         // service, and with none installed they were showing "Refresh
+         // enabled" and "Nothing to close" over an otherwise empty panel --
+         // controls for a thing that does not exist yet.
++        Text {
++          visible: !root.guideOpen && root.ready && root.paletteActionMessage !== ""
++          text: root.paletteActionMessage
++          color: Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          width: parent.width
++        }
++
++        Button {
++          visible: !root.guideOpen && root.ready
++          width: content.width
++          text: paletteActionProcess.running ? "Saving..." : "Capture palette"
++          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          enabled: !paletteActionProcess.running
++          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "palette", "--capture"], "Capture palette")
++        }
++
++        Button {
++          visible: !root.guideOpen && root.ready
++          width: content.width
++          text: paletteActionProcess.running ? "Restoring..." : "Restore captured"
++          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          enabled: !paletteActionProcess.running
++          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "restore", "--captured"], "Restore captured")
++        }
++
++        Button {
++          visible: !root.guideOpen && root.ready
++          width: content.width
++          text: paletteActionProcess.running ? "Restoring..." : "Restore stock"
++          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          enabled: !paletteActionProcess.running
++          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "restore", "--stock"], "Restore stock")
++        }
++
+         PanelSeparator {
+           visible: !root.guideOpen && root.ready
+           foreground: root.bar ? root.bar.foreground : Color.popups.text

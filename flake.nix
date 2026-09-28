@@ -167,6 +167,22 @@
                   ${pkgs.bash}/bin/bash ${./tests/runtime-targets.sh}
                 touch $out
               '';
+          editorRuntimeTest =
+            pkgs.runCommand "nixarchy-omatheme-editor-runtime"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.neovim
+                  pkgs.python3
+                  pkgs.vim
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  ${pkgs.bash}/bin/bash ${./tests/editors-runtime.sh}
+                touch $out
+              '';
           cliCompatibilityTest =
             pkgs.runCommand "nixarchy-omatheme-cli-compatibility"
               {
@@ -234,6 +250,7 @@
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
+          editors = editorRuntimeTest;
           cli-compatibility = cliCompatibilityTest;
           plugin-enable = pluginEnableTest;
           module =
@@ -289,6 +306,11 @@
                   builtins.match ".*install -Dm644.*" (
                     noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin.data
                   ) != null;
+                assert builtins.hasAttr
+                  ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua"
+                  noStylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.vim"
+                  noStylixSystem.config.home-manager.users.test.home.file;
                 assert
                   !(builtins.hasAttr "nixarchyThemeEnginePlugin" externallyManagedPluginSystem.config.home-manager.users.test.home.activation);
                 assert builtins.hasAttr "nixarchyThemeEnginePlugin"
