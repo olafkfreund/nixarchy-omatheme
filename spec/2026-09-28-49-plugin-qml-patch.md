@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 49
 intent: intent/2026-09-28-49-plugin-qml-patch.md
 ---
