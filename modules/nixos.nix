@@ -46,6 +46,10 @@ let
       name = "flatpak";
       enabled = cfg.targets.flatpak;
     }
+    {
+      name = "browsers";
+      enabled = cfg.targets.browsers;
+    }
   ];
   targetCommands = map (
     target:
@@ -149,6 +153,12 @@ in
         type = lib.types.bool;
         default = false;
         description = "Synchronize Flatpak applications using the portal.";
+      };
+
+      browsers = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Synchronize supported browser profiles at next launch.";
       };
 
       kitty = lib.mkOption {

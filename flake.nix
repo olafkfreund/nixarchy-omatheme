@@ -87,6 +87,7 @@
               programs.nixarchyThemeEngine.targets = {
                 gtk = false;
                 flatpak = true;
+                browsers = true;
               };
             }
           ];
@@ -263,6 +264,9 @@
                 ) (serviceFor targetSystem).Service.ExecStartPre;
                 assert builtins.any (
                   command: builtins.match ".*--target=flatpak --set-enabled=true --quiet" command != null
+                ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: builtins.match ".*--target=browsers --set-enabled=true --quiet" command != null
                 ) (serviceFor targetSystem).Service.ExecStartPre;
                 assert builtins.any (
                   command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"
