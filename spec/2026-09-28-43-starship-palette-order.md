@@ -96,11 +96,14 @@ The existing `grep -Fq` lines stay: they are cheap and still true.
 
 ## Risks
 
-| Risk | Where | Mitigation |
-| --- | --- | --- |
-| A base with no trailing newline or a trailing comment | generator | `base.strip()` plus explicit blank lines; the tomllib test covers the realistic fixture |
-| Existing runtime files stay broken until regenerated | p620, razer | Rollout step 4; the hand repairs from 2026-09-28 hold until then |
-| The old stripping only removes one region per match | generator | `re.sub` replaces every non-overlapping match. The idempotency test proves no duplication |
+- **A base with no trailing newline, or ending in a comment** (generator):
+  `base.strip()` plus explicit blank lines, and the tomllib test covers a
+  realistic fixture.
+- **Existing runtime files stay broken until regenerated** (p620, razer):
+  rollout step 4. The hand repairs from 2026-09-28 hold until then.
+- **The old stripping removes only one region per match** (generator):
+  `re.sub` replaces every non-overlapping match, and the idempotency test
+  proves nothing is duplicated.
 
 ## Verification
 
