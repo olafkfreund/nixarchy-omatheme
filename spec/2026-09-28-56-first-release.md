@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 56
 intent: intent/2026-09-28-56-first-release.md
 ---
