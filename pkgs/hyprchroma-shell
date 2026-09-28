@@ -85,10 +85,13 @@ def render_starship(colors: dict[str, str]) -> str | None:
         "color_red": colors["red"],
         "color_yellow": colors["yellow"],
     }
-    block = [BEGIN, 'palette = "hyprchroma"', "", "[palettes.hyprchroma]"]
-    block.extend(f"{key} = \"{value}\"" for key, value in palette.items())
-    block.append(END)
-    return "\n".join(block) + "\n\n" + base.lstrip()
+    # The selection is a root key and must precede every table; the palette
+    # table goes last, where it cannot capture the base's root keys (#43).
+    head = [BEGIN, 'palette = "hyprchroma"', END]
+    table = [BEGIN, "[palettes.hyprchroma]"]
+    table.extend(f"{key} = \"{value}\"" for key, value in palette.items())
+    table.append(END)
+    return "\n".join(head) + "\n\n" + base.strip() + "\n\n" + "\n".join(table) + "\n"
 
 
 def render_shell_theme(colors: dict[str, str]) -> str:

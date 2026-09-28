@@ -73,8 +73,15 @@ bright_yellow	#f0d080
 EOF
 
 cat > "$config/omarchy/runtime/starship.base.toml" <<'EOF'
+add_newline = true
 format = "$directory"
 palette = "user"
+
+[git_status]
+style = "red"
+
+[palettes.user]
+color_fg0 = "#000000"
 EOF
 
 cat > "$config/alacritty.toml" <<'EOF'
@@ -115,6 +122,30 @@ grep -Fq 'set -gx HYPRCHROMA_COLOR_ACCENT' "$config/omarchy/runtime/shell-theme.
 grep -Fq '"starship": "prompt-refresh"' "$state/hyprchroma/shell.json"
 grep -Fq '"kitty": "new-windows-only"' "$state/hyprchroma/terminals.json"
 sh -n "$config/omarchy/runtime/shell-theme.sh"
+
+# The palette table must not capture the base config's root keys (#43).
+python3 - "$config/omarchy/runtime/starship.toml" <<'PY'
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    d = tomllib.load(f)
+assert d.get("palette") == "hyprchroma", d.get("palette")
+assert d.get("add_newline") is True, "add_newline is not a root key"
+assert d.get("format") == "$directory", "format is not a root key"
+pal = d["palettes"]["hyprchroma"]
+expected = {"color_fg0", "color_bg0", "color_bg1", "color_bg3", "color_blue",
+            "color_aqua", "color_green", "color_orange", "color_purple",
+            "color_red", "color_yellow"}
+assert set(pal) == expected, sorted(set(pal) ^ expected)
+assert all(isinstance(v, str) for v in pal.values())
+assert d["git_status"]["style"] == "red"
+assert "user" in d["palettes"]
+PY
+
+# Regenerating from the same palette is a no-op, with no duplicated block.
+before=$(sha256sum < "$config/omarchy/runtime/starship.toml")
+run_renderers "$tmp/palette.one"
+test "$before" = "$(sha256sum < "$config/omarchy/runtime/starship.toml")"
+test "$(grep -c '^# hyprchroma: palette begin$' "$config/omarchy/runtime/starship.toml")" = 2
 cmp -s "$config/alacritty.toml" <(printf '%s\n' '[general]' 'import = ["~/.config/alacritty/theme-active.toml"]')
 
 first=$(sha256sum \
