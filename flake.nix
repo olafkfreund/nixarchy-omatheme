@@ -159,6 +159,7 @@
                 nativeBuildInputs = [
                   pkgs.bash
                   pkgs.coreutils
+                  pkgs.foot
                   pkgs.python3
                 ];
               }
