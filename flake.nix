@@ -87,6 +87,7 @@
               programs.nixarchyThemeEngine.targets = {
                 gtk = false;
                 flatpak = true;
+                browsers = true;
               };
             }
           ];
@@ -191,10 +192,15 @@
                   TMPDIR=$TMPDIR ${pkgs.bash}/bin/bash ${./tests/palette-actions.sh}
                 touch $out
               '';
+          packageDependenciesTest = pkgs.runCommand "nixarchy-omatheme-package-dependencies" { } ''
+            ${self.packages.${system}.default.pythonRuntime}/bin/python3 -c 'import plyvel'
+            touch $out
+          '';
         in
         {
           package = self.packages.${system}.default;
           palette-actions = paletteActionsTest;
+          package-dependencies = packageDependenciesTest;
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
@@ -277,6 +283,9 @@
                 ) (serviceFor targetSystem).Service.ExecStartPre;
                 assert builtins.any (
                   command: builtins.match ".*--target=flatpak --set-enabled=true --quiet" command != null
+                ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: builtins.match ".*--target=browsers --set-enabled=true --quiet" command != null
                 ) (serviceFor targetSystem).Service.ExecStartPre;
                 assert builtins.any (
                   command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"

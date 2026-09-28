@@ -36,7 +36,7 @@ stdenvNoCC.mkDerivation {
         '  property var terminalStatus: ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })\n'
         '  property var electronStatus: ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })\n'
         '  property var shellStatus: ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })\n'
-        '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
+        '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })\n'
         '\n'
         '  function terminalLabel(name) {\n'
         '    var value = root.terminalStatus[name] || "unknown"\n'
@@ -68,12 +68,13 @@ stdenvNoCC.mkDerivation {
         '    if (value === "synchronized") return "synced"\n'
         '    if (value === "not-installed") return "unavailable"\n'
         '    if (value === "restart-required") return "restart"\n'
+        '    if (value === "pending") return "next launch"\n'
         '    if (value === "disabled") return "off"\n'
         '    return value\n'
         '  }\n'
         '\n'
         '  function targetShort(name) {\n'
-        '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F" })\n'
+        '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F", browsers: "B" })\n'
         '    return labels[name] || name\n'
         '  }\n'
         '\n'
@@ -152,13 +153,14 @@ stdenvNoCC.mkDerivation {
         '          qtKde: String(parsed.qtKde || "unknown"),\n'
         '          darkReader: String(parsed.darkReader || "unknown"),\n'
         '          pearDesktop: String(parsed.pearDesktop || "unknown"),\n'
-        '          flatpak: String(parsed.flatpak || "unknown")\n'
+        '          flatpak: String(parsed.flatpak || "unknown"),\n'
+        '          browsers: String(parsed.browsers || "unknown")\n'
         '        }\n'
         '      } catch (error) {\n'
-        '        root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
+        '        root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })\n'
         '      }\n'
         '    }\n'
-        '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n'
+        '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })\n'
         '  }\n'
     )
     if property_marker not in text:
@@ -242,6 +244,7 @@ stdenvNoCC.mkDerivation {
         '            + "  " + root.targetShort("darkReader") + " " + root.desktopLabel("darkReader")\n'
         '            + "  " + root.targetShort("pearDesktop") + " " + root.desktopLabel("pearDesktop")\n'
         '            + "  " + root.targetShort("flatpak") + " " + root.desktopLabel("flatpak")\n'
+        '            + "  " + root.targetShort("browsers") + " " + root.desktopLabel("browsers")\n'
         '          color: Color.muted\n'
         '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
         '          font.pixelSize: Style.font.caption\n'
@@ -298,7 +301,7 @@ stdenvNoCC.mkDerivation {
     text = text.replace(action_marker, action_insert, 1)
     for marker, message in (
         (
-            '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
+            '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })\n',
             "desktop status property marker was not inserted",
         ),
         (
@@ -309,7 +312,7 @@ stdenvNoCC.mkDerivation {
             "desktop status watcher marker was not inserted",
         ),
         (
-            '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
+            '    onLoadFailed: root.desktopStatus = ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown", browsers: "unknown" })\n',
             "desktop status fallback marker was not inserted",
         ),
         (
@@ -318,7 +321,7 @@ stdenvNoCC.mkDerivation {
         ),
         (
             '  function targetShort(name) {\n'
-            '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F" })\n',
+            '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F", browsers: "B" })\n',
             "target abbreviation helper marker was not inserted",
         ),
         (
