@@ -5,6 +5,7 @@
   coreutils,
   jq,
   python3,
+  python3Packages,
   src,
   electronRenderer ? ./hyprchroma-electron,
   shellRenderer ? ./hyprchroma-shell,
@@ -12,9 +13,10 @@
 }:
 
 let
+  pythonRuntime = python3.withPackages (_: [ python3Packages.plyvel ]);
   outPath = builtins.placeholder "out";
-  trustedBins = "${coreutils}/bin ${jq}/bin ${python3}/bin /run/current-system/sw/bin";
-  trustedPath = "${coreutils}/bin:${jq}/bin:${python3}/bin:/run/current-system/sw/bin";
+  trustedBins = "${coreutils}/bin ${jq}/bin ${pythonRuntime}/bin /run/current-system/sw/bin";
+  trustedPath = "${coreutils}/bin:${jq}/bin:${pythonRuntime}/bin:/run/current-system/sw/bin";
 in
 stdenvNoCC.mkDerivation {
   pname = "hyprchroma";
@@ -23,9 +25,12 @@ stdenvNoCC.mkDerivation {
 
   dontBuild = true;
 
+  passthru.pythonRuntime = pythonRuntime;
+
   nativeBuildInputs = [ bash ];
 
   checkPhase = ''
+    ${pythonRuntime}/bin/python3 -c 'import plyvel'
     for file in bin/* lib/* share/hooks/hyprchroma; do
       bash -n "$file"
     done
@@ -41,13 +46,13 @@ stdenvNoCC.mkDerivation {
         --replace 'for directory in /usr/bin /usr/share/omarchy/bin; do' \
           'for directory in ${trustedBins}; do' \
         --replace '"/usr/bin", "/usr/share/omarchy/bin"' \
-          '"${coreutils}/bin", "${jq}/bin", "${python3}/bin", "/run/current-system/sw/bin"' \
+          '"${coreutils}/bin", "${jq}/bin", "${pythonRuntime}/bin", "/run/current-system/sw/bin"' \
         --replace '"/usr/bin:/usr/share/omarchy/bin"' \
           '"${trustedPath}"'
     done
     substituteInPlace packaging/systemd/hyprchromad.service \
       --replace-fail '/usr/bin/hyprchroma' '${outPath}/bin/hyprchroma'
-    ${python3}/bin/python3 - <<'PY'
+    ${pythonRuntime}/bin/python3 - <<'PY'
     from pathlib import Path
 
     path = Path("bin/hyprchroma")

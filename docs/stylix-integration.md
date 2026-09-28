@@ -46,6 +46,7 @@ programs.nixarchyThemeEngine.targets = {
   darkReader = true;
   pear = true;
   flatpak = false;
+  browsers = false;
 };
 ```
 
@@ -53,6 +54,11 @@ The first four targets are enabled by default. Flatpak is opt-in because it
 changes files through the desktop portal and affects sandboxed applications.
 The module applies these settings when the user service starts, then the
 daemon follows subsequent Omarchy theme changes.
+
+Browser synchronization is opt-in because it updates browser-owned profile
+data. The engine packages Omarchroma's `plyvel` runtime dependency through
+Nix, so enabling the browser target does not require pip. Open browsers may
+still report `next launch` until their profile databases are unlocked.
 
 Starship, Bash, Zsh, and Fish are enabled by default as well. Their shell
 structure remains declarative, while mutable palette files under

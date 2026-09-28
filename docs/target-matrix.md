@@ -17,6 +17,7 @@ Each target has one owner for structure and one owner for mutable theme data.
 | Qt/KDE | Stylix wrapper or runtime engine | Runtime KDE files | Engine sync | Restart app |
 | GNOME settings | Stylix static defaults | Runtime gsettings | Engine sync | Re-login |
 | Dark Reader | Browser policy/extension | Browser extension storage | Engine sync | Browser restart |
+| Additional browsers | Browser profiles | Omarchroma browser target | Deferred database sync | Browser exit / next launch |
 | VS Code | User settings JSON | Hyprchroma color customizations | Theme hook/settings reload | Reload window |
 | Discord | Application-managed settings | None | Explicit unsupported status | No changes |
 | Slack | Workspace/application preferences | None | Explicit unsupported status | No changes |
@@ -26,6 +27,11 @@ Each target has one owner for structure and one owner for mutable theme data.
 | GRUB/Plymouth/initrd | Stylix/NixOS | Stylix palette | Rebuild/reboot | Rebuild |
 | Fonts/cursors/icons | Stylix/NixOS | Stylix packages | Rebuild | Rebuild |
 | Unsupported app | Nix wrapper if safe | Target-specific | Report stale | Rebuild/manual |
+
+The engine packages the Python `plyvel` dependency needed by Omarchroma's
+browser database integration. GTK, libadwaita, and Qt theme assets remain
+host-level concerns and are only required when the corresponding desktop
+target consumes them.
 
 ## Ownership rules
 
