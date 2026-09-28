@@ -87,6 +87,16 @@ check reads the unit from the existing test system (the same way
    - the unit finishes `success` within 90 s
    - the bar has content afterwards
 
+## Deviations
+
+- **The check is `plugin-enable`, not `pluginEnable`,** to match the repo's
+  other check names (`palette-actions`, `package-dependencies`).
+- **The kick uses the file's own activation form**
+  (`{ after = [ "reloadSystemd" ]; before = [ ]; data = …; }`), like the
+  neighbouring `nixarchyThemeEnginePlugin` entry. A NixOS module's `lib` has
+  no `hm.dag`. The built activation script runs sd-switch (line 385) before
+  the kick (line 399).
+
 ## Tests
 
 | # | Command | Expected |

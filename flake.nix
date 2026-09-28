@@ -133,6 +133,26 @@
             )).success;
           serviceFor =
             testSystem: testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
+          pluginUnit =
+            noStylixSystem.config.home-manager.users.test.systemd.user.services.nixarchyThemeEnginePlugin;
+          pluginSwitchMethod = pluginUnit.Unit."X-SwitchMethod" or null;
+          pluginEnableTest =
+            pkgs.runCommand "nixarchy-omatheme-plugin-enable"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnugrep
+                  pkgs.gnused
+                ];
+              }
+              ''
+                PLUGIN_ENABLE=${toString pluginUnit.Service.ExecStart} \
+                  UNIT_SWITCH_METHOD=${if pluginSwitchMethod == null then "unset" else pluginSwitchMethod} \
+                  UNIT_TIMEOUT=${toString (pluginUnit.Service.TimeoutStartSec or "unset")} \
+                  ${pkgs.bash}/bin/bash ${./tests/plugin-enable.sh}
+                touch $out
+              '';
           runtimeTargetsTest =
             pkgs.runCommand "nixarchy-omatheme-runtime-targets"
               {
@@ -204,6 +224,7 @@
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
+          plugin-enable = pluginEnableTest;
           module =
             builtins.deepSeq
               {
