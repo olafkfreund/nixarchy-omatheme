@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 38
 spec: spec/2026-09-28-38-runtime-dependencies.md
 ---
