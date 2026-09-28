@@ -3,6 +3,10 @@
 The runtime engine must not assume that every application supports an import.
 Each target has one owner for structure and one owner for mutable theme data.
 
+Palette capture and restore are runtime actions over the canonical user-owned
+palette. They re-enter the normal synchronization path and do not change the
+declarative owner of any target.
+
 | Target | Structure owner | Runtime color owner | Runtime action | Fallback |
 | --- | --- | --- | --- | --- |
 | Omarchy shell/Hyprland | Omarchy | Omarchy | Native theme hook | None |

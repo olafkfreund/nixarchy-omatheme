@@ -31,6 +31,8 @@ stdenvNoCC.mkDerivation {
     property_marker = '  property string activeTarget: ""\n'
     property_insert = (
         '  property string activeTarget: ""\n'
+        '  property string paletteActionMessage: ""\n'
+        '  property string paletteActionLabel: ""\n'
         '  property var terminalStatus: ({ kitty: "unknown", foot: "unknown", ghostty: "unknown" })\n'
         '  property var electronStatus: ({ vscode: "unknown", discord: "unsupported", slack: "unsupported", obsidian: "unsupported" })\n'
         '  property var shellStatus: ({ starship: "unknown", bash: "unknown", zsh: "unknown", fish: "unknown" })\n'
@@ -162,6 +164,30 @@ stdenvNoCC.mkDerivation {
     if property_marker not in text:
         raise SystemExit("terminal status property marker was not found")
     text = text.replace(property_marker, property_insert, 1)
+    process_marker = '  Process {\n    id: restoreProcess\n'
+    process_insert = (
+        '  Process {\n'
+        '    id: paletteActionProcess\n'
+        '    environment: ({ PATH: root.trustedPath })\n'
+        '    onExited: function(code) {\n'
+        '      root.paletteActionMessage = code === 0\n'
+        '        ? root.paletteActionLabel + " complete"\n'
+        '        : root.paletteActionLabel + " failed"\n'
+        '      root.refreshStaleApps()\n'
+        '    }\n'
+        '  }\n'
+        '\n'
+        '  function runPaletteAction(command, label) {\n'
+        '    if (paletteActionProcess.running) return\n'
+        '    root.paletteActionLabel = label\n'
+        '    paletteActionProcess.command = command\n'
+        '    paletteActionProcess.running = true\n'
+        '  }\n'
+        '\n'
+    ) + process_marker
+    if process_marker not in text:
+        raise SystemExit("palette action process marker was not found")
+    text = text.replace(process_marker, process_insert, 1)
     ui_marker = (
         '        Text {\n'
         '          visible: !root.guideOpen && root.ready\n'
@@ -228,6 +254,48 @@ stdenvNoCC.mkDerivation {
     if ui_marker not in text:
         raise SystemExit("terminal status UI marker was not found")
     text = text.replace(ui_marker, ui_insert, 1)
+    action_marker = '        PanelSeparator {\n'
+    action_insert = (
+        '        Text {\n'
+        '          visible: !root.guideOpen && root.ready && root.paletteActionMessage !== ""\n'
+        '          text: root.paletteActionMessage\n'
+        '          color: Color.muted\n'
+        '          font.family: root.bar ? root.bar.fontFamily : Style.font.family\n'
+        '          font.pixelSize: Style.font.caption\n'
+        '          width: parent.width\n'
+        '        }\n'
+        '\n'
+        '        Button {\n'
+        '          visible: !root.guideOpen && root.ready\n'
+        '          width: content.width\n'
+        '          text: paletteActionProcess.running ? "Saving..." : "Capture palette"\n'
+        '          foreground: root.bar ? root.bar.foreground : Color.popups.text\n'
+        '          enabled: !paletteActionProcess.running\n'
+        '          onClicked: root.runPaletteAction(["${engine}/bin/hyprchroma", "palette", "--capture"], "Capture palette")\n'
+        '        }\n'
+        '\n'
+        '        Button {\n'
+        '          visible: !root.guideOpen && root.ready\n'
+        '          width: content.width\n'
+        '          text: paletteActionProcess.running ? "Restoring..." : "Restore captured"\n'
+        '          foreground: root.bar ? root.bar.foreground : Color.popups.text\n'
+        '          enabled: !paletteActionProcess.running\n'
+        '          onClicked: root.runPaletteAction(["${engine}/bin/hyprchroma", "restore", "--captured"], "Restore captured")\n'
+        '        }\n'
+        '\n'
+        '        Button {\n'
+        '          visible: !root.guideOpen && root.ready\n'
+        '          width: content.width\n'
+        '          text: paletteActionProcess.running ? "Restoring..." : "Restore stock"\n'
+        '          foreground: root.bar ? root.bar.foreground : Color.popups.text\n'
+        '          enabled: !paletteActionProcess.running\n'
+        '          onClicked: root.runPaletteAction(["${engine}/bin/hyprchroma", "restore", "--stock"], "Restore stock")\n'
+        '        }\n'
+        '\n'
+    ) + action_marker
+    if action_marker not in text:
+        raise SystemExit("palette action UI marker was not found")
+    text = text.replace(action_marker, action_insert, 1)
     for marker, message in (
         (
             '  property var desktopStatus: ({ gtk: "unknown", qtKde: "unknown", darkReader: "unknown", pearDesktop: "unknown", flatpak: "unknown" })\n',
@@ -252,6 +320,15 @@ stdenvNoCC.mkDerivation {
             '  function targetShort(name) {\n'
             '    var labels = ({ starship: "S", bash: "B", zsh: "Z", fish: "F", kitty: "K", foot: "F", ghostty: "G", vscode: "VS", discord: "D", slack: "S", obsidian: "O", gtk: "G", qtKde: "Q", darkReader: "DR", pearDesktop: "P", flatpak: "F" })\n',
             "target abbreviation helper marker was not inserted",
+        ),
+        (
+            '  Process {\n'
+            '    id: paletteActionProcess\n',
+            "palette action process was not inserted",
+        ),
+        (
+            '          onClicked: root.runPaletteAction(["${engine}/bin/hyprchroma", "palette", "--capture"], "Capture palette")\n',
+            "palette capture action was not inserted",
         ),
         (
             '          text: "Shell  " + root.targetShort("starship") + " " + root.shellLabel("starship")\n',

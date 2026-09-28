@@ -178,9 +178,23 @@
                   ${pkgs.bash}/bin/bash ${./tests/desktop-runtime.sh}
                 touch $out
               '';
+          paletteActionsTest =
+            pkgs.runCommand "nixarchy-omatheme-palette-actions"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                ];
+              }
+              ''
+                PLUGIN_PANEL=${self.packages.${system}.omarchroma-plugin}/Panel.qml \
+                  TMPDIR=$TMPDIR ${pkgs.bash}/bin/bash ${./tests/palette-actions.sh}
+                touch $out
+              '';
         in
         {
           package = self.packages.${system}.default;
+          palette-actions = paletteActionsTest;
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;

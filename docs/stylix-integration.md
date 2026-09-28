@@ -66,6 +66,11 @@ The active palette is also available at:
 ~/.config/hyprchroma/palette.toml
 ```
 
+The plugin can capture the current palette or restore the engine's captured or
+stock state at runtime. These actions update user-owned state through
+Hyprchroma and do not rewrite Stylix or Home Manager source files, so they do
+not require a NixOS rebuild.
+
 Kitty, Foot, and Ghostty use runtime include files rendered from the active
 palette. Their declarative wrappers are copied to regular user-owned files
 after Home Manager links the generation, so Omarchy and Hyprchroma never write
