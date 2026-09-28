@@ -39,11 +39,11 @@
     "omarchroma": {
       "flake": false,
       "locked": {
-        "lastModified": 1790283510,
-        "narHash": "sha256-go7GI2ojy09u3YrKcJeUxQpnQ6WfhqcP/zvVYPwXQsQ=",
+        "lastModified": 1790565012,
+        "narHash": "sha256-fpKmUgyt67sUOszi4EgiSj9Hr2115dQFaHXHzTv7yes=",
         "owner": "NobleDoodle",
         "repo": "omarchroma",
-        "rev": "5d05f161c378f7daa43e4ec860ef335ac71f4272",
+        "rev": "7048180b8c7261a6057d5218bd297f0d5ada24d0",
         "type": "github"
       },
       "original": {

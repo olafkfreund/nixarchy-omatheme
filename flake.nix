@@ -167,6 +167,16 @@
                   ${pkgs.bash}/bin/bash ${./tests/runtime-targets.sh}
                 touch $out
               '';
+          cliCompatibilityTest =
+            pkgs.runCommand "nixarchy-omatheme-cli-compatibility"
+              {
+                nativeBuildInputs = [ pkgs.gnugrep ];
+              }
+              ''
+                ${self.packages.${system}.default}/bin/hyprchroma --help |
+                  ${pkgs.gnugrep}/bin/grep -F -- '--target=gtk|qt-kde|dark-reader|pear|flatpak|browsers'
+                touch $out
+              '';
           electronRuntimeTest =
             pkgs.runCommand "nixarchy-omatheme-electron-runtime"
               {
@@ -224,6 +234,7 @@
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
+          cli-compatibility = cliCompatibilityTest;
           plugin-enable = pluginEnableTest;
           module =
             builtins.deepSeq
