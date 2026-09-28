@@ -3,6 +3,11 @@
 The runtime engine must not assume that every application supports an import.
 Each target has one owner for structure and one owner for mutable theme data.
 
+The matrix is the release contract: “Runtime action” describes what a live
+theme switch can update, while “Fallback” describes the behavior when an
+application cannot reload immediately. Targets marked unsupported are not
+modified by the engine.
+
 Palette capture and restore are runtime actions over the canonical user-owned
 palette. They re-enter the normal synchronization path and do not change the
 declarative owner of any target.
@@ -36,6 +41,13 @@ The engine packages the Python `plyvel` dependency needed by Omarchroma's
 browser database integration. GTK, libadwaita, and Qt theme assets remain
 host-level concerns and are only required when the corresponding desktop
 target consumes them.
+
+## `v0.1.0` verification
+
+The first release verifies the module in both Stylix modes. Runtime checks
+cover the Omarchy shell, GTK/Qt, shell prompts, Alacritty, Kitty, Foot,
+Ghostty, VS Code, Vim, and Neovim paths; unsupported Discord, Slack, and
+Obsidian integrations remain explicitly untouched.
 
 ## Ownership rules
 

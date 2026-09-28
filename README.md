@@ -29,7 +29,7 @@ system.
 
 ```nix
 {
-  inputs.nixarchy-omatheme.url = "github:olafkfreund/nixarchy-omatheme";
+  inputs.nixarchy-omatheme.url = "github:olafkfreund/nixarchy-omatheme/v0.1.0";
 
   outputs = { self, nixpkgs, home-manager, nixarchy-omatheme, ... }:
     nixpkgs.lib.nixosSystem {
@@ -78,6 +78,25 @@ omarchy theme set nord
 
 The theme command is runtime-only. It does not require a rebuild or a second
 declarative theme definition.
+
+## First release
+
+`v0.1.0` is the first versioned release. Pin it in production flakes for a
+reproducible runtime engine:
+
+```sh
+nix flake lock --update-input nixarchy-omatheme
+nixos-rebuild switch --flake .
+```
+
+The release is verified through the flake checks and runtime tests for both
+module paths:
+
+- Stylix imported and detected automatically.
+- Stylix absent, including the Nixarchy offline-ISO path.
+- Live palette switching without a NixOS rebuild.
+- GTK, Qt, shell, terminal, browser, Electron, Vim, and Neovim targets where
+  the target matrix marks runtime support.
 
 Alacritty is handled at the ownership boundary: if Home Manager or Stylix
 created `~/.config/alacritty/alacritty.toml` as a symlink, activation copies
@@ -156,7 +175,7 @@ suite remains available in the source repository.
 
 ## Status
 
-This project is early-stage. The package and module boundary are working; the
+The package and module boundary are stable for the `v0.1.0` release. The
 application target matrix will grow as each runtime integration is verified.
 
 ## License
