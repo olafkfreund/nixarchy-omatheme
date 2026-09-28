@@ -57,8 +57,9 @@ daemon follows subsequent Omarchy theme changes.
 
 Browser synchronization is opt-in because it updates browser-owned profile
 data. The engine packages Omarchroma's `plyvel` runtime dependency through
-Nix, so enabling the browser target does not require pip. Open browsers may
-still report `next launch` until their profile databases are unlocked.
+Nix, so enabling the browser target does not require pip. Set `browsers = true`
+to synchronize supported profiles; open browsers may still report `next launch`
+until their profile databases are unlocked.
 
 Starship, Bash, Zsh, and Fish are enabled by default as well. Their shell
 structure remains declarative, while mutable palette files under
