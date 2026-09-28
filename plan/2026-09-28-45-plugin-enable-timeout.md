@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 45
 spec: spec/2026-09-28-45-plugin-enable-timeout.md
 ---
