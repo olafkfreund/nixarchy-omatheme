@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 37
 spec: spec/2026-09-28-37-browser-target.md
 ---
