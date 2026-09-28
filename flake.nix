@@ -179,9 +179,14 @@
                   ${pkgs.bash}/bin/bash ${./tests/desktop-runtime.sh}
                 touch $out
               '';
+          packageDependenciesTest = pkgs.runCommand "nixarchy-omatheme-package-dependencies" { } ''
+            ${self.packages.${system}.default.pythonRuntime}/bin/python3 -c 'import plyvel'
+            touch $out
+          '';
         in
         {
           package = self.packages.${system}.default;
+          package-dependencies = packageDependenciesTest;
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;

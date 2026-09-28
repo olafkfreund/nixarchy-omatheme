@@ -55,9 +55,11 @@ changes files through the desktop portal and affects sandboxed applications.
 The module applies these settings when the user service starts, then the
 daemon follows subsequent Omarchy theme changes.
 
-Browser profile synchronization is opt-in because it updates browser-owned
-profile data. Set `browsers = true` to synchronize supported profiles; open
-browsers report `next launch` until they can safely consume the new palette.
+Browser synchronization is opt-in because it updates browser-owned profile
+data. The engine packages Omarchroma's `plyvel` runtime dependency through
+Nix, so enabling the browser target does not require pip. Set `browsers = true`
+to synchronize supported profiles; open browsers may still report `next launch`
+until their profile databases are unlocked.
 
 Starship, Bash, Zsh, and Fish are enabled by default as well. Their shell
 structure remains declarative, while mutable palette files under

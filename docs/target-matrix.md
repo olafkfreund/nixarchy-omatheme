@@ -28,6 +28,11 @@ Each target has one owner for structure and one owner for mutable theme data.
 | Fonts/cursors/icons | Stylix/NixOS | Stylix packages | Rebuild | Rebuild |
 | Unsupported app | Nix wrapper if safe | Target-specific | Report stale | Rebuild/manual |
 
+The engine packages the Python `plyvel` dependency needed by Omarchroma's
+browser database integration. GTK, libadwaita, and Qt theme assets remain
+host-level concerns and are only required when the corresponding desktop
+target consumes them.
+
 ## Ownership rules
 
 1. A file has one writer at a time.
