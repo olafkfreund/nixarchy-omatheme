@@ -15,6 +15,7 @@ home="$tmp/home"
 bin="$tmp/bin"
 mkdir -p "$prefix" "$config" "$data" "$state" "$runtime" "$home" "$bin"
 mkdir -p "$tmp/flatpak"
+mkdir -p "$tmp/theme"
 chmod 700 "$runtime" "$home"
 
 cat > "$bin/hyprctl" <<'EOF'
@@ -25,7 +26,17 @@ cat > "$bin/xdg-settings" <<'EOF'
 #!/bin/sh
 printf '%s\n' browseros.desktop
 EOF
-chmod 755 "$bin/hyprctl" "$bin/xdg-settings"
+cat > "$bin/omarchy" <<EOF
+#!/bin/sh
+case "\${1:-} \${2:-}" in
+  "theme current") printf '%s\\n' fixture ;;
+  "theme dir") printf '%s\\n' "$tmp/theme" ;;
+  "font current") printf '%s\\n' Noto-Sans ;;
+  *) exit 0 ;;
+esac
+EOF
+printf '%s\n' NixarchyMissingIcon > "$tmp/theme/icons.theme"
+chmod 755 "$bin/hyprctl" "$bin/xdg-settings" "$bin/omarchy"
 
 cp -a "$HYPRCHROMA_PACKAGE/bin" "$prefix/"
 cp -a "$HYPRCHROMA_PACKAGE/lib" "$prefix/"
@@ -110,7 +121,7 @@ cat > "$prefix/lib/hyprchroma/hyprchroma-palette" <<'EOF'
 set -eu
 case "${1:-}" in
   --source) printf '%s\n' fixture ;;
-  --all) cat "$HYPRCHROMA_FIXTURE" ;;
+  --all|--for-sync) cat "$HYPRCHROMA_FIXTURE" ;;
   *)
     found=false
     while IFS="$(printf '\t')" read -r key value; do
