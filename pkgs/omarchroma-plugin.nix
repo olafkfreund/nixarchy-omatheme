@@ -3,6 +3,7 @@
   stdenvNoCC,
   coreutils,
   jq,
+  perl,
   engine,
   src,
 }:
@@ -16,6 +17,10 @@ stdenvNoCC.mkDerivation {
   patches = [ ./patches/omarchroma-panel.patch ];
 
   postPatch = ''
+    # shortcut: omarchroma before 3.2.3 reads Color unqualified, which Qt 6.12's
+    # QtQuick Color singleton shadows; drop once the omarchroma input is >= 3.2.3.
+    perl -pi -e 's/(^|[^.A-Za-z_])Color\.(?=[a-z])/$1Commons.Color./g' Panel.qml
+    grep -q '^import qs.Commons as Commons$' Panel.qml || sed -i 's/^import qs.Commons$/&\nimport qs.Commons as Commons/' Panel.qml
     substituteInPlace Panel.qml \
       --replace '/usr/bin/hyprchroma' '${engine}/bin/hyprchroma' \
       --replace '/usr/bin/hyprchroma-setup' '${engine}/bin/hyprchroma-setup' \
@@ -36,6 +41,7 @@ stdenvNoCC.mkDerivation {
 
   nativeBuildInputs = [
     jq
+    perl
   ];
 
   checkPhase = ''
