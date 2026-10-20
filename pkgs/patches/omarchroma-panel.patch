@@ -171,7 +171,7 @@
 +            + "  " + root.targetShort("bash") + " " + root.shellLabel("bash")
 +            + "  " + root.targetShort("zsh") + " " + root.shellLabel("zsh")
 +            + "  " + root.targetShort("fish") + " " + root.shellLabel("fish")
-+          color: Color.muted
++          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
 +          font.pixelSize: Style.font.caption
 +          width: parent.width
@@ -184,7 +184,7 @@
 +          text: "Terminals  " + root.targetShort("kitty") + " " + root.terminalLabel("kitty")
 +            + "  " + root.targetShort("foot") + " " + root.terminalLabel("foot")
 +            + "  " + root.targetShort("ghostty") + " " + root.terminalLabel("ghostty")
-+          color: Color.muted
++          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
 +          font.pixelSize: Style.font.caption
 +          width: parent.width
@@ -198,7 +198,7 @@
 +            + "  " + root.targetShort("discord") + " " + root.electronLabel("discord")
 +            + "  " + root.targetShort("slack") + " " + root.electronLabel("slack")
 +            + "  " + root.targetShort("obsidian") + " " + root.electronLabel("obsidian")
-+          color: Color.muted
++          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
 +          font.pixelSize: Style.font.caption
 +          width: parent.width
@@ -214,7 +214,7 @@
 +            + "  " + root.targetShort("pearDesktop") + " " + root.desktopLabel("pearDesktop")
 +            + "  " + root.targetShort("flatpak") + " " + root.desktopLabel("flatpak")
 +            + "  " + root.targetShort("browsers") + " " + root.desktopLabel("browsers")
-+          color: Color.muted
++          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
 +          font.pixelSize: Style.font.caption
 +          width: parent.width
@@ -234,7 +234,7 @@
 +        Text {
 +          visible: !root.guideOpen && root.ready && root.paletteActionMessage !== ""
 +          text: root.paletteActionMessage
-+          color: Color.muted
++          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
 +          font.pixelSize: Style.font.caption
 +          width: parent.width
@@ -244,7 +244,7 @@
 +          visible: !root.guideOpen && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Saving..." : "Capture palette"
-+          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
 +          enabled: !paletteActionProcess.running
 +          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "palette", "--capture"], "Capture palette")
 +        }
@@ -253,7 +253,7 @@
 +          visible: !root.guideOpen && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Restoring..." : "Restore captured"
-+          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
 +          enabled: !paletteActionProcess.running
 +          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "restore", "--captured"], "Restore captured")
 +        }
@@ -262,7 +262,7 @@
 +          visible: !root.guideOpen && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Restoring..." : "Restore stock"
-+          foreground: root.bar ? root.bar.foreground : Color.popups.text
++          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
 +          enabled: !paletteActionProcess.running
 +          onClicked: root.runPaletteAction(["/usr/bin/hyprchroma", "restore", "--stock"], "Restore stock")
 +        }
