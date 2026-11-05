@@ -136,6 +136,12 @@ let
       exit 1
     fi
 
+    if ${pkgs.jq}/bin/jq -e --arg id "$plugin_id" \
+      '((.disabledPlugins // []) | index($id) | not) and ([.bar.layout[]?[]? | if type == "object" then .id else . end] | index($id) != null)' \
+      "$HOME/.config/omarchy/shell.json" >/dev/null 2>&1; then
+      exit 0
+    fi
+
     omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
     delay=1
     for attempt in 1 2 3 4 5; do

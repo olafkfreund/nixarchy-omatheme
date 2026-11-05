@@ -34,8 +34,11 @@ sed -i "1c#!$(command -v bash)" "$tmp/bin/omarchy-shell"
 
 run_case() {
   : >"$tmp/log"
+  mkdir -p "$tmp/home/.config/omarchy"
+  rm -f "$tmp/home/.config/omarchy/shell.json"
+  [ -z "${2:-}" ] || printf '%s\n' "$2" >"$tmp/home/.config/omarchy/shell.json"
   set +e
-  STUB_MODE="$1" STUB_LOG="$tmp/log" PATH="$tmp/bin:$PATH" "$PLUGIN_ENABLE" 2>/dev/null
+  HOME="$tmp/home" STUB_MODE="$1" STUB_LOG="$tmp/log" PATH="$tmp/bin:$PATH" "$PLUGIN_ENABLE" 2>/dev/null
   rc=$?
   set -e
   rescans=$(grep -c ' rescanPlugins' "$tmp/log" || true)
@@ -53,6 +56,26 @@ run_case dead
 check "dead shell: exit code" "$rc" 1
 check "dead shell: rescanPlugins calls" "$rescans" 1
 check "dead shell: enablePlugin calls" "$enables" 5
+
+id=io.github.nobledoodle.omarchroma
+for fixture in \
+  "{\"bar\":{\"layout\":{\"right\":[\"$id\"]}}}" \
+  "{\"bar\":{\"layout\":{\"right\":[{\"id\":\"$id\"}]}}}"; do
+  run_case dead "$fixture"
+  check "placed plugin: exit code" "$rc" 0
+  check "placed plugin: rescanPlugins calls" "$rescans" 0
+  check "placed plugin: enablePlugin calls" "$enables" 0
+done
+
+for fixture in \
+  "{\"plugins\":[{\"id\":\"$id\"}]}" \
+  "{\"disabledPlugins\":[\"$id\"],\"bar\":{\"layout\":{\"right\":[\"$id\"]}}}" \
+  ""; do
+  run_case dead "$fixture"
+  check "unplaced plugin: exit code" "$rc" 1
+  check "unplaced plugin: rescanPlugins calls" "$rescans" 1
+  check "unplaced plugin: enablePlugin calls" "$enables" 5
+done
 
 rm -rf "$tmp"
 exit "$fail"

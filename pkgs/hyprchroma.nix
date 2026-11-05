@@ -102,6 +102,31 @@ stdenvNoCC.mkDerivation {
         + marker,
         1,
     )
+    old = '  settings_key=$(target_key "$target") || fail "unknown target: $target"\n'
+    assert old in text, "hyprchroma set-enabled block was not found"
+    text = text.replace(
+        old,
+        old
+        + '  if (( ! force )); then\n'
+        + '    recorded=$(jq -r --arg key "$settings_key" \'.frameworks[$key] | if . == null then "" else tostring end\' "$SETTINGS_FILE" 2>/dev/null || true)\n'
+        + '    if [[ $recorded == "$set_enabled" ]]; then\n'
+        + '      status_key=$settings_key\n'
+        + '      [[ $status_key == pear ]] && status_key=pearDesktop\n'
+        + '      if [[ $set_enabled == true ]]; then\n'
+        + '        jq -e --arg key "$status_key" \'.[$key] != null\' "$STATUS_FILE" >/dev/null 2>&1 && exit 0\n'
+        + '      elif [[ $target != dark-reader && $target != qt-kde ]]; then\n'
+        + '        exit 0\n'
+        + '      fi\n'
+        + '    fi\n'
+        + '  fi\n',
+        1,
+    )
+    old = '"$HYPRCHROMA_SELF" --target="$name" --set-enabled=false --quiet || true'
+    assert old in text, "hyprchroma framework remove call was not found"
+    text = text.replace(old, '"$HYPRCHROMA_SELF" --target="$name" --set-enabled=false --quiet --force || true', 1)
+    old = '"$HYPRCHROMA_SELF" --target="$name" --set-enabled=true --quiet || true'
+    assert old in text, "hyprchroma framework restore call was not found"
+    text = text.replace(old, '"$HYPRCHROMA_SELF" --target="$name" --set-enabled=true --quiet --force || true', 1)
     path.write_text(text)
     PY
   '';
