@@ -18,15 +18,15 @@ mkdir -p "$tmp/flatpak"
 mkdir -p "$tmp/theme"
 chmod 700 "$runtime" "$home"
 
-cat > "$bin/hyprctl" <<'EOF'
+cat >"$bin/hyprctl" <<'EOF'
 #!/bin/sh
 printf '%s\n' '[]'
 EOF
-cat > "$bin/xdg-settings" <<'EOF'
+cat >"$bin/xdg-settings" <<'EOF'
 #!/bin/sh
 printf '%s\n' browseros.desktop
 EOF
-cat > "$bin/omarchy" <<EOF
+cat >"$bin/omarchy" <<EOF
 #!/bin/sh
 case "\${1:-} \${2:-}" in
   "theme current") printf '%s\\n' fixture ;;
@@ -35,7 +35,7 @@ case "\${1:-} \${2:-}" in
   *) exit 0 ;;
 esac
 EOF
-printf '%s\n' NixarchyMissingIcon > "$tmp/theme/icons.theme"
+printf '%s\n' NixarchyMissingIcon >"$tmp/theme/icons.theme"
 chmod 755 "$bin/hyprctl" "$bin/xdg-settings" "$bin/omarchy"
 
 cp -a "$HYPRCHROMA_PACKAGE/bin" "$prefix/"
@@ -68,7 +68,7 @@ sed -i "s#\[\"hyprctl\",#[\"$bin/hyprctl\",#g" \
 sed -i "s#\[\"xdg-settings\",#[\"$bin/xdg-settings\",#g" \
   "$prefix/lib/hyprchroma/hyprchroma-dark-reader"
 
-cat > "$tmp/palette.one" <<'EOF'
+cat >"$tmp/palette.one" <<'EOF'
 background	#101820
 dark_background	#0c1218
 darker_background	#080c10
@@ -92,7 +92,7 @@ bright_yellow	#f0d070
 mode	dark
 EOF
 
-cat > "$tmp/palette.two" <<'EOF'
+cat >"$tmp/palette.two" <<'EOF'
 background	#201018
 dark_background	#180c12
 darker_background	#10080c
@@ -116,7 +116,7 @@ bright_yellow	#f0d080
 mode	light
 EOF
 
-cat > "$prefix/lib/hyprchroma/hyprchroma-palette" <<'EOF'
+cat >"$prefix/lib/hyprchroma/hyprchroma-palette" <<'EOF'
 #!/bin/sh
 set -eu
 case "${1:-}" in
@@ -164,12 +164,12 @@ test "$(jq -r '.gtk' "$state/hyprchroma/status.json")" = synchronized
 test "$(jq -r '.qtKde' "$state/hyprchroma/status.json")" = synchronized
 test "$(jq -r '.pearDesktop' "$state/hyprchroma/status.json")" = not-installed
 case "$(jq -r '.flatpak' "$state/hyprchroma/status.json")" in
-  not-installed|synchronized) ;;
+  not-installed | synchronized) ;;
   *) exit 1 ;;
 esac
 
 marker="$config/unrelated.txt"
-printf '%s\n' keep-me > "$marker"
+printf '%s\n' keep-me >"$marker"
 first=$(sha256sum \
   "$home/.config/gtk-3.0/gtk.css" \
   "$config/kdeglobals" \
@@ -192,7 +192,7 @@ test ! -f "$home/.config/gtk-3.0/gtk.css"
 test "$(cat "$marker")" = keep-me
 
 # Repeat enables are no-ops (#61): same recorded value, no --force.
-sed 's/#e080c0/#112233/' "$tmp/palette.two" > "$tmp/palette.three"
+sed 's/#e080c0/#112233/' "$tmp/palette.two" >"$tmp/palette.three"
 qt_hash() { sha256sum "$config/kdeglobals" "$data/color-schemes/Hyprchroma.colors"; }
 before=$(qt_hash)
 run_target "$tmp/palette.three" qt-kde --set-enabled=true
@@ -201,7 +201,7 @@ run_target "$tmp/palette.three" qt-kde --set-enabled=true --force
 test "$before" != "$(qt_hash)"
 
 # dark-reader off is never skipped, even when already off: the revert runs
-# again (no snapshot exists here, so it reports that and exits non-zero).
+# again (no snapshot exists here, so it reports that).
 run_target "$tmp/palette.three" dark-reader --set-enabled=false >/dev/null 2>&1 || true
 out=$(run_target "$tmp/palette.three" dark-reader --set-enabled=false 2>&1 || true)
 grep -Fq 'no Dark Reader snapshot' <<<"$out"
