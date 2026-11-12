@@ -28,6 +28,8 @@ declarative owner of any target.
 | Dark Reader | Browser policy/extension | Browser extension storage | Engine sync | Browser restart |
 | Additional browsers | Browser profiles | Omarchroma browser target | Deferred database sync | Browser exit / next launch |
 | VS Code | User settings JSON | Hyprchroma color customizations | Theme hook/settings reload | Reload window |
+| Neovim | User config / Home Manager | Hyprchroma runtime `neovim-theme.lua` | In-editor watcher re-applies the theme's colorscheme, or `omarchy` | `:OmarchyThemeReload` / restart |
+| Vim | User config / Home Manager | Hyprchroma runtime `vim-theme.vim` | In-editor watcher (needs `+timers`) applies `omarchy` | `:OmarchyThemeReload` / restart |
 | Discord | Application-managed settings | None | Explicit unsupported status | No changes |
 | Slack | Workspace/application preferences | None | Explicit unsupported status | No changes |
 | Obsidian | Vault-scoped appearance | None | Explicit unsupported status | No changes |
