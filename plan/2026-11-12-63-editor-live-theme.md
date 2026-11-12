@@ -33,6 +33,11 @@ with the session (Opus): host check, commits, PR.
   with no `COLORTERM` lost the user's colours on every switch. The module
   check also builds the `programs.neovim` fixture's `home-files`, the only
   place Home Manager reports a target collision.
+  Deviation found in review (agy): LazyVim sets `habamax` when the
+  configured colorscheme fails to load (a missing theme plugin), so in
+  Neovim `colors_name == "habamax"` with a LazyVim colorscheme other than
+  `habamax` also counts as unset at startup. The `omarchy` fallback counts as
+  applied only when it sets `colors_name`.
 - **Change = palette content change.** Identical renderer output (same
   theme re-selected, font-only update) does nothing. A palette change
   without an Omarchy `neovim.lua` change uses the `omarchy` fallback.

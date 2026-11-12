@@ -88,7 +88,7 @@ local function apply(force_native)
       return true
     end
   end
-  if pcall(vim.cmd.colorscheme, "omarchy") then
+  if pcall(vim.cmd.colorscheme, "omarchy") and vim.g.colors_name == "omarchy" then
     applied, applied_spec, pending = contents, spec_contents, false
     return true
   end
@@ -113,7 +113,10 @@ local function startup()
   -- shortcut: matches Neovim 0.10+ built-in Normal (NvimLightGrey2/NvimDarkGrey2); update if those change.
   local builtin = ok and ((normal.fg == 0xe0e2ea and normal.bg == 0x14161b)
     or (normal.fg == 0x14161b and normal.bg == 0xe0e2ea))
-  if vim.g.colors_name == nil and ok and ((normal.fg == nil and normal.bg == nil) or builtin) then
+  -- LazyVim falls back to habamax when the configured colorscheme fails to load.
+  local cfg_ok, cfg = pcall(require, "lazyvim.config")
+  local fallback = vim.g.colors_name == "habamax" and cfg_ok and type(cfg) == "table" and cfg.colorscheme ~= "habamax"
+  if fallback or (vim.g.colors_name == nil and ok and ((normal.fg == nil and normal.bg == nil) or builtin)) then
     reload(true)
   end
 end

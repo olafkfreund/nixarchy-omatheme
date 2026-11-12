@@ -387,6 +387,17 @@ vim.cmd("qa!")
 EOF
 timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_hl.lua"
 
+# 3b2. LazyVim's habamax fallback (configured colorscheme failed) -> omarchy at startup
+cat > "$XDG_CONFIG_HOME/nvim/init.lua" <<'EOF'
+package.preload["lazyvim.config"] = function() return { colorscheme = "missingtheme" } end
+vim.cmd.colorscheme("habamax")
+EOF
+cat > "$tmp/startup_habamax.lua" <<'EOF'
+assert(vim.g.colors_name == "omarchy", "expected omarchy over habamax, got " .. tostring(vim.g.colors_name))
+vim.cmd("qa!")
+EOF
+timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_habamax.lua"
+
 # 3c. Empty init.lua -> desktop theme applied, and plain Neovim (no lazy.nvim) follows live switch
 : > "$XDG_CONFIG_HOME/nvim/init.lua"
 cat > "$tmp/plain_nvim.lua" <<'EOF'
