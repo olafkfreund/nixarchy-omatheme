@@ -372,7 +372,10 @@
                   command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"
                 ) (serviceFor noStylixSystem).Service.ExecStartPre;
                 assert requiredModeFails;
-                pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
+                # Home Manager reports target collisions only when it builds home-files.
+                pkgs.runCommand "nixarchy-omatheme-module-eval" {
+                  neovimHomeFiles = neovimProgramSystem.config.home-manager.users.test.home-files;
+                } "touch $out"
               );
         }
       );

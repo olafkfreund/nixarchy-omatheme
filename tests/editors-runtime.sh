@@ -106,6 +106,7 @@ test -f "$XDG_STATE_HOME/hyprchroma/editors.json"
 grep -Fq '["Normal"] = { fg = "#f0f0e0", bg = "#101820" }' "$XDG_CONFIG_HOME/omarchy/runtime/neovim-theme.lua"
 grep -Fq '["@function"] = { link = "Function" }' "$XDG_CONFIG_HOME/omarchy/runtime/neovim-theme.lua"
 grep -Fq 'unlet! g:colors_name' "$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim"
+grep -Fq "if !has('gui_running') && !&termguicolors" "$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim"
 grep -Fq 'set background=light' "$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim"
 grep -Fq "if has('termguicolors') && \$COLORTERM =~# 'truecolor\\|24bit' | set termguicolors | endif" "$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim"
 grep -Fq 'highlight Function guifg=#6090d0' "$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim"
@@ -114,7 +115,7 @@ grep -Fq '"neovim": "generated"' "$XDG_STATE_HOME/hyprchroma/editors.json"
 timeout 60 nvim --headless -u NONE \
   -c "lua local t=dofile('$XDG_CONFIG_HOME/omarchy/runtime/neovim-theme.lua'); for group, highlights in pairs(t.highlights) do vim.api.nvim_set_hl(0, group, highlights) end; local h=vim.api.nvim_get_hl(0, {name='Normal'}); assert(string.format('#%06x', h.fg) == '#f0f0e0')" \
   -c 'qa!'
-timeout 60 vim -Nu NONE -n -es \
+timeout 60 vim -Nu NONE -n -es -c "set termguicolors" \
   -c "source $XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim" \
   -c "if execute('highlight Normal') !~ '#f0f0e0' | cquit | endif" \
   -c 'qa!'
@@ -426,8 +427,12 @@ sleep 700m
 call add(s:log, 'first:' . &background . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui'))
 
 call system('$lib/set-palette light "#304050" "#f0f0e0" "#6090d0"')
-sleep 100m
+call system('touch -r $XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim $tmp/vim-mtime')
+sleep 700m
+call add(s:log, 'mid:' . &background . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui'))
 call system('$lib/set-palette dark "#405060" "#f0f0e0" "#6090d0"')
+" Same mtime as the previous write, so an mtime-only watcher would miss it.
+call system('touch -r $tmp/vim-mtime $XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim')
 sleep 700m
 call add(s:log, 'second:' . &background . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui'))
 
@@ -447,7 +452,23 @@ COLORTERM=truecolor TERM=xterm-256color timeout 60 script -qec \
 grep -Fq 'start:omarchy:light:#101820' "$tmp/vim-result.txt"
 grep -Fq 'cmd:2' "$tmp/vim-result.txt"
 grep -Fq 'first:dark:#203040' "$tmp/vim-result.txt"
+grep -Fq 'mid:light:#304050' "$tmp/vim-result.txt"
 grep -Fq 'second:dark:#405060' "$tmp/vim-result.txt"
 grep -Fq 'reload:omarchy:#405060' "$tmp/vim-result.txt"
 
 echo "editor runtime test passed"
+
+# 4b. Vim: a user colour set only for the terminal, through a link, keeps omarchy off at startup
+cat > "$tmp/vimrc-user" <<'EOF'
+set nocompatible
+highlight MyBg ctermbg=4
+highlight! link Normal MyBg
+EOF
+cat > "$tmp/t-user.vim" <<EOF
+call writefile([get(g:, 'colors_name', 'NONE')], '$tmp/vim-user.txt')
+qa!
+EOF
+COLORTERM=truecolor TERM=xterm-256color timeout 60 script -qec \
+  "vim -X -u $tmp/vimrc-user -i NONE -n -c 'autocmd VimEnter * ++once source $tmp/t-user.vim'" \
+  /dev/null </dev/null >/dev/null
+grep -Fxq 'NONE' "$tmp/vim-user.txt" || { echo "FAIL: Vim startup overrode user cterm colours: $(cat "$tmp/vim-user.txt")"; exit 1; }

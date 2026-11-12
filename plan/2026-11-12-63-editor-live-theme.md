@@ -27,6 +27,12 @@ with the session (Opus): host check, commits, PR.
   built-in colours (`#e0e2ea`/`#14161b`, swapped for light), so in Neovim
   "no fg or bg" also counts that built-in pair as unset. Vim has no default
   `Normal` colours and keeps the plain check. It always records a baseline (mtime + contents) at startup.
+  Deviation found in review: the Vim generated file starts with
+  `if !has('gui_running') && !&termguicolors && !(truecolor $COLORTERM) | finish | endif`,
+  because it writes only gui colours; without this a Vim under tmux or ssh
+  with no `COLORTERM` lost the user's colours on every switch. The module
+  check also builds the `programs.neovim` fixture's `home-files`, the only
+  place Home Manager reports a target collision.
 - **Change = palette content change.** Identical renderer output (same
   theme re-selected, font-only update) does nothing. A palette change
   without an Omarchy `neovim.lua` change uses the `omarchy` fallback.

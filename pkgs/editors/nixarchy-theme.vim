@@ -26,9 +26,16 @@ function! s:apply() abort
 endfunction
 
 function! s:startup() abort
-  if !exists('g:colors_name') && empty(synIDattr(hlID('Normal'), 'fg', 'gui')) && empty(synIDattr(hlID('Normal'), 'bg', 'gui'))
-    call s:apply()
+  if exists('g:colors_name')
+    return
   endif
+  let id = synIDtrans(hlID('Normal'))
+  for mode in ['gui', 'cterm']
+    if !empty(synIDattr(id, 'fg', mode)) || !empty(synIDattr(id, 'bg', mode))
+      return
+    endif
+  endfor
+  call s:apply()
 endfunction
 
 function! s:watch(timer) abort
