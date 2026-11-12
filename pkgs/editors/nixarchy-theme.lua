@@ -78,8 +78,8 @@ local function apply(force_native)
             end
             local plugin = named or slugged or basename
             if plugin and plugin._ and plugin._.installed then
-              if not plugin._.loaded then
-                require("lazy.core.util").walkmods(plugin.dir .. "/lua", function(modname)
+              if not plugin._.loaded and type(plugin.dir) == "string" then
+                pcall(require("lazy.core.util").walkmods, plugin.dir .. "/lua", function(modname)
                   package.loaded[modname] = nil
                   package.preload[modname] = nil
                 end)
@@ -148,7 +148,7 @@ local timer = vim.fn.timer_start(500, function()
   local contents = read(runtime)
   if not contents then
     pending = current ~= nil
-  elseif contents ~= applied or pending then
+  elseif contents ~= applied or pending or pending_native then
     reload(false)
   else
     pending = false

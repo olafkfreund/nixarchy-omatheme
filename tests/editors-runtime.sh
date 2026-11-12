@@ -407,6 +407,19 @@ if not ok then
   io.stderr:write("FAIL: startup retry did not apply native mocktheme: colors_name=" .. tostring(vim.g.colors_name) .. " bg=" .. normal_bg() .. "\n")
   vim.cmd("cq")
 end
+-- A forced reload that fails while the file is missing must survive a missing-file tick
+-- and apply when the same contents come back.
+local runtime = vim.env.XDG_CONFIG_HOME .. "/omarchy/runtime/neovim-theme.lua"
+os.rename(runtime, runtime .. ".away")
+vim.cmd("OmarchyThemeReload")
+vim.cmd.colorscheme("habamax")
+vim.wait(1200, function() return false end, 50)
+os.rename(runtime .. ".away", runtime)
+ok = vim.wait(2000, function() return vim.g.colors_name == "mocktheme" end, 50)
+if not ok then
+  io.stderr:write("FAIL: forced reload lost after missing-file tick: colors_name=" .. tostring(vim.g.colors_name) .. "\n")
+  vim.cmd("cq")
+end
 vim.cmd("qa!")
 EOF
 timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_retry_native.lua"
@@ -542,7 +555,7 @@ grep -Fq 'first:dark:#203040' "$tmp/vim-result.txt"
 grep -Fq 'mid:light:#304050' "$tmp/vim-result.txt"
 grep -Fq 'second:dark:#405060' "$tmp/vim-result.txt"
 grep -Fq 'reload:omarchy:#405060' "$tmp/vim-result.txt"
-grep -Fq 'missing:omarchy:#405060:' "$tmp/vim-result.txt"
+grep -Fxq 'missing:omarchy:#405060:' "$tmp/vim-result.txt"
 grep -Fq 'restored:omarchy:light:#506070' "$tmp/vim-result.txt"
 
 echo "editor runtime test passed"

@@ -9,7 +9,7 @@ let s:pending = 0
 
 function! s:apply() abort
   if !filereadable(s:file)
-    let s:pending = 0
+    let s:pending = 1  " retry once the file is readable again
     return
   endif
   try

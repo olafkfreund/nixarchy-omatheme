@@ -300,3 +300,12 @@ next theme change. No user files are touched, so nothing else needs undoing.
     without its fix.
     → verify: `nix build .#checks.x86_64-linux.editors -L`, then
     `nix flake check`.
+
+Deviation from review of steps 9–10 (Codex and agy both): a forced reload
+that failed while the runtime file was missing was dropped once the same
+contents came back; the timer now also re-applies while `pending_native` is
+set (regression case in 2b, shown failing first). The module clearing runs
+in its own `pcall`; Vim keeps `s:pending` when the file is unreadable so it
+retries once it returns. Case 5 (Vim missing file) cannot fail without fix D:
+the old code already left colours alone and only polled; it stays as a
+behaviour check.
