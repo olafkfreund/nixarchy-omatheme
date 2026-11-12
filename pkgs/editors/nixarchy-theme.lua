@@ -28,6 +28,7 @@ local last_mtime = mtime()
 local applied = read(runtime)
 local applied_spec = read(spec)
 local pending = false
+local pending_native = false
 
 local function apply(force_native)
   local contents = read(runtime)
@@ -77,6 +78,12 @@ local function apply(force_native)
             end
             local plugin = named or slugged or basename
             if plugin and plugin._ and plugin._.installed then
+              if not plugin._.loaded then
+                require("lazy.core.util").walkmods(plugin.dir .. "/lua", function(modname)
+                  package.loaded[modname] = nil
+                  package.preload[modname] = nil
+                end)
+              end
               require("lazy.core.loader").reload(plugin)
             end
           end
@@ -100,7 +107,9 @@ local function reload(force_native)
     pending = true
     return
   end
+  force_native = force_native or pending_native
   pending = not apply(force_native)
+  pending_native = pending and force_native
 end
 
 vim.api.nvim_create_user_command("OmarchyThemeReload", function()
@@ -116,7 +125,8 @@ local function startup()
   -- LazyVim falls back to habamax when the configured colorscheme fails to load.
   local cfg_ok, cfg = pcall(require, "lazyvim.config")
   local fallback = vim.g.colors_name == "habamax" and cfg_ok and type(cfg) == "table" and cfg.colorscheme ~= "habamax"
-  if fallback or (vim.g.colors_name == nil and ok and ((normal.fg == nil and normal.bg == nil) or builtin)) then
+  if fallback or (vim.g.colors_name == nil and ok and normal.ctermfg == nil and normal.ctermbg == nil
+    and ((normal.fg == nil and normal.bg == nil) or builtin)) then
     reload(true)
   end
 end

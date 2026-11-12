@@ -39,8 +39,11 @@ function! s:startup() abort
 endfunction
 
 function! s:watch(timer) abort
+  if !filereadable(s:file)
+    return
+  endif
   try
-    let current = filereadable(s:file) ? readfile(s:file) : []
+    let current = readfile(s:file)
   catch
     let s:pending = 1
     return

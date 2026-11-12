@@ -9,6 +9,8 @@ coders:
   4: coder   # flake check inputs and evaluation fixtures
   5: agy     # large test script, many mechanical cases
   6: coder   # documentation rows and README section
+  9: codex   # review follow-up: bridge state fixes (owner asked: "fix everything", 2026-11-12)
+  10: agy    # review follow-up: regression tests for step 9 and the basename lookup
 reviewers:
   - codex    # reviewed intent and spec; checks the diff against both
   - agy      # independent second read of the bridge logic and tests
@@ -280,3 +282,21 @@ Revert the branch's implementation commits. Home Manager removes the new
 `site/plugin` and `colors` links and restores the previous bridge on the next
 switch; generated runtime files are rewritten by the old renderer on the
 next theme change. No user files are touched, so nothing else needs undoing.
+
+## Review follow-up (owner: "fix everything", 2026-11-12)
+
+9. **Bridge fixes** (codex). `pkgs/editors/nixarchy-theme.lua`,
+   `pkgs/editors/nixarchy-theme.vim`: (A) Neovim startup counts a cterm-only
+   `Normal` as user colours; (B) a theme cycle A → B → A' clears the
+   plugin's stale `package.loaded` modules before `Loader.reload`; (C)
+   `force_native` stays set until an apply succeeds, so a failed first
+   apply still picks the native theme on retry; (D) Vim does no work while
+   the runtime file is missing or unreadable.
+   → verify: `nix build .#checks.x86_64-linux.editors -L`.
+
+10. **Regression tests** (agy). `tests/editors-runtime.sh`: basename plugin
+    lookup; A → B → A' with module state; cterm-only startup; startup retry
+    keeps the native theme; Vim missing file. Each case shown to fail
+    without its fix.
+    → verify: `nix build .#checks.x86_64-linux.editors -L`, then
+    `nix flake check`.
