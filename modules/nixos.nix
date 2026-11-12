@@ -264,7 +264,8 @@ in
       ];
 
       xdg.dataFile = lib.mkIf cfg.targets.neovim {
-        "nvim/site/plugin/nixarchy-theme.lua".source = "${cfg.package}/share/hyprchroma/editors/nixarchy-theme.lua";
+        "nvim/site/plugin/nixarchy-theme.lua".source =
+          "${cfg.package}/share/hyprchroma/editors/nixarchy-theme.lua";
         "nvim/site/colors/omarchy.lua".source = "${cfg.package}/share/hyprchroma/editors/omarchy.lua";
       };
 
