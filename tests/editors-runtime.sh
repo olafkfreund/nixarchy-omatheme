@@ -137,9 +137,9 @@ lazyvim_stub="$tmp/LazyVim"
 mkdir -p "$mock1/lua/mocktheme" "$mock1/colors" "$mock2/lua/mocktheme2" "$mock2/colors" "$lazyvim_stub/lua/lazyvim"
 
 cat > "$mock1/lua/mocktheme/init.lua" <<'EOF'
-local M = { opts = { bg = "#111111" } }
+local M = { opts = {} }
 function M.setup(opts)
-  M.opts = vim.tbl_extend("force", M.opts, opts or {})
+  M.opts = vim.tbl_extend("keep", M.opts, opts or {})
 end
 return M
 EOF
@@ -177,6 +177,12 @@ cat > "$XDG_STATE_HOME/omarchy/current/theme/neovim.lua" <<EOF
 return {
   { "mock/mocktheme.nvim", dir = "$mock1", opts = { bg = "#112233" } },
   { "LazyVim/LazyVim", dir = "$lazyvim_stub", opts = { colorscheme = "mocktheme" } },
+}
+EOF
+
+cat > "$XDG_CONFIG_HOME/nvim/lua/plugins/zz_local.lua" <<EOF
+return {
+  { "local/mocktheme2.nvim", dir = "$mock2" },
 }
 EOF
 
@@ -263,16 +269,32 @@ if vim.g.colors_name ~= "mocktheme" then
   fail("expected mocktheme after opts change, got " .. tostring(vim.g.colors_name))
 end
 
--- Case C: Cross-plugin and mode
+-- Case C: Cross-plugin, mode, and basename lookup (slug in neovim.lua differs from lazy's plugin[1], no name)
 write_file(spec_path, string.format([[
 return {
-  { "mock/mocktheme2.nvim", dir = %q, opts = { bg = "#223344" } },
+  { "other-owner/mocktheme2.nvim", opts = { bg = "#223344" } },
   { "LazyVim/LazyVim", dir = %q, opts = { colorscheme = "mocktheme2" } },
 }
-]], mock2, lv))
+]], lv))
 set_palette("dark", "#0a0b0c", "#f0f0e0", "#6090d0")
 if not vim.wait(2000, function() return vim.g.colors_name == "mocktheme2" and normal_bg() == "#223344" and vim.o.background == "dark" end, 50) then
-  fail("cross-plugin switch failed: colors_name=" .. tostring(vim.g.colors_name) .. " bg=" .. normal_bg() .. " mode=" .. vim.o.background)
+  fail("cross-plugin basename switch failed: colors_name=" .. tostring(vim.g.colors_name) .. " bg=" .. normal_bg() .. " mode=" .. vim.o.background)
+end
+local p2 = require("lazy.core.config").plugins["mocktheme2.nvim"]
+if not p2 or p2[1] ~= "local/mocktheme2.nvim" then
+  fail("expected lazy plugin[1] to stay local/mocktheme2.nvim, got " .. tostring(p2 and p2[1]))
+end
+
+-- Case C2: Theme cycle A -> B -> A' with module state that a stale package.loaded would leak
+write_file(spec_path, string.format([[
+return {
+  { "mock/mocktheme.nvim", dir = %q, opts = { bg = "#778899" } },
+  { "LazyVim/LazyVim", dir = %q, opts = { colorscheme = "mocktheme" } },
+}
+]], mock1, lv))
+set_palette("dark", "#0b0c0d", "#f0f0e0", "#6090d0")
+if not vim.wait(2000, function() return vim.g.colors_name == "mocktheme" and normal_bg() == "#778899" end, 50) then
+  fail("theme cycle A -> B -> A' did not apply new opts #778899: colors_name=" .. tostring(vim.g.colors_name) .. " bg=" .. normal_bg())
 end
 
 -- Case D: Palette-only -> omarchy
@@ -359,6 +381,37 @@ EOF
 
 timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/lazy_cases.lua"
 
+# 2b. Startup retry keeps the native theme when runtime neovim-theme.lua is initially missing
+ln -sf "$XDG_STATE_HOME/omarchy/current/theme/neovim.lua" "$XDG_CONFIG_HOME/nvim/lua/plugins/theme.lua"
+cat > "$XDG_STATE_HOME/omarchy/current/theme/neovim.lua" <<EOF
+return {
+  { "mock/mocktheme.nvim", dir = "$mock1", opts = { bg = "#334455" } },
+  { "LazyVim/LazyVim", dir = "$lazyvim_stub", opts = { colorscheme = "mocktheme" } },
+}
+EOF
+rm -f "$XDG_CONFIG_HOME/omarchy/runtime/neovim-theme.lua"
+cat > "$tmp/startup_retry_native.lua" <<'EOF'
+local function normal_bg()
+  local h = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+  return h.bg and string.format("#%06x", h.bg) or ""
+end
+if vim.g.colors_name ~= nil then
+  io.stderr:write("FAIL: expected nil colors_name while runtime file missing, got " .. tostring(vim.g.colors_name) .. "\n")
+  vim.cmd("cq")
+end
+vim.fn.system({ vim.env.TEST_LIB .. "/set-palette", "dark", "#101820", "#f0f0e0", "#6090d0" })
+local ok = vim.wait(2000, function()
+  return vim.g.colors_name == "mocktheme" and normal_bg() == "#334455" and vim.o.background == "dark"
+end, 50)
+if not ok then
+  io.stderr:write("FAIL: startup retry did not apply native mocktheme: colors_name=" .. tostring(vim.g.colors_name) .. " bg=" .. normal_bg() .. "\n")
+  vim.cmd("cq")
+end
+vim.cmd("qa!")
+EOF
+timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_retry_native.lua"
+rm -f "$XDG_STATE_HOME/omarchy/current/theme/neovim.lua"
+
 # 3. Startup precedence cases
 rm -rf "$XDG_CONFIG_HOME/nvim"
 mkdir -p "$XDG_CONFIG_HOME/nvim"
@@ -386,6 +439,20 @@ assert(string.format("#%06x", h.bg) == "#123123", "expected #123123")
 vim.cmd("qa!")
 EOF
 timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_hl.lua"
+
+# 3b1. Cterm-only Normal highlight set in init.lua -> kept (colors_name remains nil)
+cat > "$XDG_CONFIG_HOME/nvim/init.lua" <<'EOF'
+vim.api.nvim_set_hl(0, "Normal", { ctermfg = 252, ctermbg = 235 })
+EOF
+cat > "$tmp/startup_cterm_hl.lua" <<'EOF'
+local h = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+if vim.g.colors_name ~= nil or h.ctermfg ~= 252 or h.ctermbg ~= 235 then
+  io.stderr:write("FAIL: expected nil colors_name and cterm 252/235 for cterm-only Normal, got " .. tostring(vim.g.colors_name) .. "\n")
+  vim.cmd("cq")
+end
+vim.cmd("qa!")
+EOF
+timeout 60 nvim --headless -c "autocmd VimEnter * ++once luafile $tmp/startup_cterm_hl.lua"
 
 # 3b2. LazyVim's habamax fallback (configured colorscheme failed) -> omarchy at startup
 cat > "$XDG_CONFIG_HOME/nvim/init.lua" <<'EOF'
@@ -452,6 +519,15 @@ unlet! g:colors_name
 OmarchyThemeReload
 call add(s:log, 'reload:' . get(g:, 'colors_name', 'NONE') . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui'))
 
+let v:errmsg = ''
+call delete('$XDG_CONFIG_HOME/omarchy/runtime/vim-theme.vim')
+sleep 1500m
+call add(s:log, 'missing:' . get(g:, 'colors_name', 'NONE') . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui') . ':' . v:errmsg)
+
+call system('$lib/set-palette light "#506070" "#f0f0e0" "#6090d0"')
+sleep 700m
+call add(s:log, 'restored:' . get(g:, 'colors_name', 'NONE') . ':' . &background . ':' . synIDattr(synIDtrans(hlID('Normal')), 'bg', 'gui'))
+
 call writefile(s:log, s:out)
 qa!
 EOF
@@ -466,6 +542,8 @@ grep -Fq 'first:dark:#203040' "$tmp/vim-result.txt"
 grep -Fq 'mid:light:#304050' "$tmp/vim-result.txt"
 grep -Fq 'second:dark:#405060' "$tmp/vim-result.txt"
 grep -Fq 'reload:omarchy:#405060' "$tmp/vim-result.txt"
+grep -Fq 'missing:omarchy:#405060:' "$tmp/vim-result.txt"
+grep -Fq 'restored:omarchy:light:#506070' "$tmp/vim-result.txt"
 
 echo "editor runtime test passed"
 
