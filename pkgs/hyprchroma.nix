@@ -11,6 +11,7 @@
   shellRenderer ? ./hyprchroma-shell,
   terminalRenderer ? ./hyprchroma-terminals,
   editorRenderer ? ./hyprchroma-editors,
+  editorBridges ? ./editors,
 }:
 
 let
@@ -143,6 +144,9 @@ stdenvNoCC.mkDerivation {
     install -Dm755 "${shellRenderer}" "$out/lib/hyprchroma/hyprchroma-shell"
     install -Dm755 "${electronRenderer}" "$out/lib/hyprchroma/hyprchroma-electron"
     install -Dm755 "${editorRenderer}" "$out/lib/hyprchroma/hyprchroma-editors"
+    for file in nixarchy-theme.lua omarchy.lua nixarchy-theme.vim omarchy.vim; do
+      install -Dm644 "${editorBridges}/$file" "$out/share/hyprchroma/editors/$file"
+    done
     install -Dm644 share/pear-theme.css.template $out/share/hyprchroma/pear-theme.css.template
     install -Dm755 share/hooks/hyprchroma $out/share/hyprchroma/hooks/hyprchroma
     install -Dm644 packaging/systemd/hyprchromad.service $out/lib/systemd/user/hyprchromad.service

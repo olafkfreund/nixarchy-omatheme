@@ -23,7 +23,10 @@ with the session (Opus): host check, commits, PR.
 
 - **Startup:** the user's config wins. The bridge applies a theme at
   `VimEnter` only when `g:colors_name` is unset **and** `Normal` has no fg or
-  bg. It always records a baseline (mtime + contents) at startup.
+  bg. Deviation found in step 1: Neovim 0.10+ always gives `Normal` its
+  built-in colours (`#e0e2ea`/`#14161b`, swapped for light), so in Neovim
+  "no fg or bg" also counts that built-in pair as unset. Vim has no default
+  `Normal` colours and keeps the plain check. It always records a baseline (mtime + contents) at startup.
 - **Change = palette content change.** Identical renderer output (same
   theme re-selected, font-only update) does nothing. A palette change
   without an Omarchy `neovim.lua` change uses the `omarchy` fallback.
@@ -211,8 +214,12 @@ timer on `VimLeavePre`. Load guard `g:loaded_nixarchy_theme_bridge`.
    - **Startup precedence:** config with `vim.cmd.colorscheme("default")`,
      config with only `nvim_set_hl(0, "Normal", …)`, empty config.
    - **Plain Neovim:** no lazy.nvim, bridge from `site/plugin`; live switch.
-   - **Vim:** `COLORTERM=truecolor vim -Nu DEFAULTS -i NONE -n -es` with
-     `$HOME/.vim/pack/...`; startup applies `omarchy`; renderer run during
+   - **Vim:** `COLORTERM=truecolor TERM=xterm-256color script -qec "vim -X -u $T/vimrc -i NONE -n -c 'autocmd VimEnter * ++once source $T/t.vim'" /dev/null`
+     with `vimrc` containing only `set nocompatible` and the pack under
+     `$HOME/.vim/pack/...` (verified in step 1: `-u NONE`/`-u DEFAULTS`
+     skip plugins, `-es` skips them too, and without a pty Vim exits on
+     stdin EOF before `VimEnter`; results are written to a file with
+     `writefile`); startup applies `omarchy`; renderer run during
      `sleep 2` updates via timer, including two writes within one second;
      `:OmarchyThemeReload` works.
    → verify: `nix build .#checks.x86_64-linux.editors -L`.
