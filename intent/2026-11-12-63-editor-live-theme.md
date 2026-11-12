@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 63
 author: olafkfreund
 follows: spec/2026-09-28-53-editor-theme-targets.md
