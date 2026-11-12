@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 63
 intent: intent/2026-11-12-63-editor-live-theme.md
 ---
