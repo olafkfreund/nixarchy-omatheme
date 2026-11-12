@@ -44,12 +44,17 @@ with the session (Opus): host check, commits, PR.
 ### Neovim apply step (exact order)
 
 1. `vim.g.colors_name = nil`; set `vim.o.background` from runtime `mode`.
-2. Native path only if Omarchy `neovim.lua` exists, **its contents changed
-   since the last apply**, and the `LazyVim/LazyVim` entry has
-   `opts.colorscheme`. Otherwise go to 5.
-3. If `package.loaded.lazy`: `require("lazy.core.plugin").load()`; find the
-   theme plugin in `require("lazy.core.config").plugins` by `name`, full
-   slug (`plugin[1]`) or basename; if `plugin._.installed`,
+2. Native path only if Omarchy `neovim.lua` exists, names a colorscheme in
+   the `LazyVim/LazyVim` entry's `opts.colorscheme`, and either its contents
+   changed since the last apply (timer-driven updates) or the apply is the
+   startup `VimEnter` apply or `:OmarchyThemeReload` (both always try the
+   native path). Otherwise go to 5. The startup baseline records the
+   contents of both the runtime file and `neovim.lua`.
+3. If `package.loaded.lazy`: `require("lazy.core.plugin").load()`; take the
+   plugin entries of `neovim.lua` other than `LazyVim/LazyVim`, and find each
+   in `require("lazy.core.config").plugins` by its `name`, else by matching
+   `plugin[1]` to its slug, else by its slug basename (lazy.nvim's default
+   name, e.g. `tokyonight.nvim`), never by the colorscheme name; if `plugin._.installed`,
    `require("lazy.core.loader").reload(plugin)`. Failure → step 4.
 4. `vim.cmd.colorscheme(name)`. Failure → step 5.
 5. `vim.cmd.colorscheme("omarchy")`.
@@ -81,9 +86,12 @@ timer on `VimLeavePre`. Load guard `g:loaded_nixarchy_theme_bridge`.
    `pkgs/editors/nixarchy-theme.vim`, `pkgs/editors/omarchy.vim`
    implementing the decisions above. `omarchy.lua` / `omarchy.vim`: no-op if
    the runtime file is missing; else clear `colors_name`, set `background`,
-   `highlight clear` (Vim: also `syntax reset` when `syntax_on`), set
-   `colors_name = "omarchy"`, apply highlights (Neovim: from the runtime
-   table, honouring `{ link = … }` entries). `:OmarchyThemeReload` in both.
+   `highlight clear`, set `colors_name = "omarchy"`, apply highlights from
+   the runtime table, honouring `{ link = … }` entries. `omarchy.vim` only
+   sources the runtime `vim-theme.vim` when readable (that file already
+   carries the colorscheme preamble from step 2). The Vim startup "no
+   colours" test uses `synIDattr(synIDtrans(hlID('Normal')), 'fg'|'bg', 'gui')`
+   and `'cterm'`. `:OmarchyThemeReload` in both.
    In `pkgs/hyprchroma.nix`: add an `editorBridges ? ./editors` argument
    next to `editorRenderer` (line 13) and install the four files with
    `install -Dm644` to `$out/share/hyprchroma/editors/` next to the
@@ -180,8 +188,10 @@ timer on `VimLeavePre`. Load guard `g:loaded_nixarchy_theme_bridge`.
      `{ import = "plugins" }`, `install.missing = false`,
      `rocks.enabled = false`, `checker.enabled = false`,
      `change_detection.enabled = false`, default performance resets. A local
-     mock colorscheme plugin (`dir = …`, `name = "mocktheme"`, `colors/`
-     file reading `opts.bg`) and a mock Omarchy `neovim.lua` symlinked from
+     mock colorscheme plugin (`dir = …`, slug `mock/mocktheme.nvim` with no
+     `name`, so lookup by basename is exercised; `lua/mocktheme/init.lua`
+     with `setup(opts)` storing `opts.bg`, and `colors/mocktheme.lua` using
+     it) and a mock Omarchy `neovim.lua` symlinked from
      `lua/plugins/theme.lua`. Assert `:OmarchyThemeReload` exists.
    - **Same plugin, new opts:** one headless session; rewrite `neovim.lua`
      with new `opts.bg`, run the renderer with a second palette via
@@ -206,7 +216,11 @@ timer on `VimLeavePre`. Load guard `g:loaded_nixarchy_theme_bridge`.
      `sleep 2` updates via timer, including two writes within one second;
      `:OmarchyThemeReload` works.
    → verify: `nix build .#checks.x86_64-linux.editors -L`.
-   Traps: Vim timers may not fire in `-es` mode; if they do not, run Vim
+   Traps: `-c` commands run before `VimEnter`, so startup assertions go in
+   `-c "autocmd VimEnter * ++once lua …"` or after `vim.wait`; the failure
+   case stages the new runtime file at mode `000` in the same directory and
+   `mv -f`s it into place (a plain `chmod` does not move `mtime`), waits one
+   tick, then `chmod 644` and waits again. Vim timers may not fire in `-es` mode; if they do not, run Vim
    with `--not-a-term` under `script -qc` or `-X` and record the choice in
    this plan; `chmod 000` has no effect as root in some sandboxes, so skip
    that case with a message when `id -u` is 0; every editor run needs
