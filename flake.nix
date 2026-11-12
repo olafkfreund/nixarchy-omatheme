@@ -82,6 +82,9 @@
           externallyManagedPluginSystem = makeTestSystem [
             { programs.nixarchyThemeEngine.managePlugin = false; }
           ];
+          neovimProgramSystem = makeTestSystem [
+            { home-manager.users.test.programs.neovim.enable = true; }
+          ];
           targetSystem = makeTestSystem [
             {
               programs.nixarchyThemeEngine.targets = {
@@ -175,9 +178,13 @@
                   pkgs.bash
                   pkgs.coreutils
                   pkgs.neovim
+                  pkgs.gnused
                   pkgs.python3
+                  pkgs.util-linux
                   pkgs.vim
+                  pkgs.vimPlugins.lazy-nvim
                 ];
+                LAZY_NVIM = "${pkgs.vimPlugins.lazy-nvim}";
               }
               ''
                 HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
@@ -307,11 +314,42 @@
                   builtins.match ".*install -Dm644.*" (
                     noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEnginePlugin.data
                   ) != null;
-                assert builtins.hasAttr
-                  ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua"
-                  noStylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr "nvim/site/plugin/nixarchy-theme.lua"
+                  noStylixSystem.config.home-manager.users.test.xdg.dataFile;
+                assert builtins.hasAttr "nvim/site/colors/omarchy.lua"
+                  noStylixSystem.config.home-manager.users.test.xdg.dataFile;
+                assert
+                  !(builtins.hasAttr ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua" noStylixSystem.config.home-manager.users.test.home.file);
                 assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.vim"
                   noStylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/colors/omarchy.vim"
+                  noStylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr "nvim/site/plugin/nixarchy-theme.lua"
+                  stylixSystem.config.home-manager.users.test.xdg.dataFile;
+                assert builtins.hasAttr "nvim/site/colors/omarchy.lua"
+                  stylixSystem.config.home-manager.users.test.xdg.dataFile;
+                assert
+                  !(builtins.hasAttr ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua" stylixSystem.config.home-manager.users.test.home.file);
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.vim"
+                  stylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/colors/omarchy.vim"
+                  stylixSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr "nvim/site/plugin/nixarchy-theme.lua"
+                  runtimeSystem.config.home-manager.users.test.xdg.dataFile;
+                assert builtins.hasAttr "nvim/site/colors/omarchy.lua"
+                  runtimeSystem.config.home-manager.users.test.xdg.dataFile;
+                assert
+                  !(builtins.hasAttr ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua" runtimeSystem.config.home-manager.users.test.home.file);
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.vim"
+                  runtimeSystem.config.home-manager.users.test.home.file;
+                assert builtins.hasAttr ".vim/pack/nixarchy/start/nixarchy-theme/colors/omarchy.vim"
+                  runtimeSystem.config.home-manager.users.test.home.file;
+                assert builtins.all (f: f.source != null) (
+                  builtins.attrValues neovimProgramSystem.config.home-manager.users.test.home.file
+                );
+                assert builtins.all (f: f.source != null) (
+                  builtins.attrValues neovimProgramSystem.config.home-manager.users.test.xdg.dataFile
+                );
                 assert
                   !(builtins.hasAttr "nixarchyThemeEnginePlugin" externallyManagedPluginSystem.config.home-manager.users.test.home.activation);
                 assert builtins.hasAttr "nixarchyThemeEnginePlugin"
@@ -346,7 +384,10 @@
                   command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"
                 ) (serviceFor noStylixSystem).Service.ExecStartPre;
                 assert requiredModeFails;
-                pkgs.runCommand "nixarchy-omatheme-module-eval" { } "touch $out"
+                # Home Manager reports target collisions only when it builds home-files.
+                pkgs.runCommand "nixarchy-omatheme-module-eval" {
+                  neovimHomeFiles = neovimProgramSystem.config.home-manager.users.test.home-files;
+                } "touch $out"
               );
         }
       );

@@ -122,6 +122,28 @@ programs.nixarchyThemeEngine.stylix.mode = "runtime";
 Detection happens during Nix evaluation through the presence of Stylix's module
 options. It does not depend on a Stylix executable or an installed package.
 
+## Editors
+
+Neovim (including LazyVim) and Vim follow live theme switches in a running
+session, usually within a second. The module installs a small watcher under
+`~/.local/share/nvim/site` and `~/.vim/pack`; it never writes to your editor
+config.
+
+- **Startup:** your config wins. The desktop theme is applied at startup only
+  when your config sets no colorscheme and no `Normal` colours (LazyVim's
+  `habamax` fallback for a missing theme plugin counts as unset).
+- **Live switch:** when the theme's Neovim plugin is installed, LazyVim
+  reloads it with the new options; otherwise the palette-derived `omarchy`
+  colorscheme is used. Nothing is installed or fetched.
+- **Palette-only changes** (the palette changes but the theme's
+  `neovim.lua` does not) use `omarchy`.
+- **Vim** needs `+timers` to follow live, and only applies colours where it
+  can show them: a GUI, `set termguicolors`, or a terminal that sets
+  `COLORTERM=truecolor`.
+- `:OmarchyThemeReload` re-applies the current theme by hand.
+- Home Manager `programs.neovim` is checked; NixVim and nvf are best-effort.
+- Restart open editors once after the first deploy so the watcher loads.
+
 ## Stylix boundary
 
 Keep Stylix enabled for its supported targets and generated application

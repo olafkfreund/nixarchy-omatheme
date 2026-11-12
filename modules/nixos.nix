@@ -58,69 +58,6 @@ let
   shellTargetsEnabled =
     cfg.targets.starship || cfg.targets.bash || cfg.targets.zsh || cfg.targets.fish;
   editorTargetsEnabled = cfg.targets.neovim || cfg.targets.vim;
-  neovimThemeBridge = pkgs.writeText "nixarchy-neovim-theme-bridge.lua" ''
-    local file = vim.fn.expand("~/.config/omarchy/runtime/neovim-theme.lua")
-    local last_mtime
-
-    local function reload()
-      local ok, theme = pcall(dofile, file)
-      if not ok or type(theme) ~= "table" then
-        return
-      end
-      for group, highlights in pairs(theme.highlights or {}) do
-        vim.api.nvim_set_hl(0, group, highlights)
-      end
-    end
-
-    local function mtime()
-      local uv = vim.uv or vim.loop
-      local stat = uv.fs_stat(file)
-      return stat and stat.mtime and (stat.mtime.sec * 1000000000 + stat.mtime.nsec) or nil
-    end
-
-    reload()
-    vim.api.nvim_create_user_command("OmarchyThemeReload", reload, {})
-    vim.api.nvim_create_autocmd("ColorScheme", { callback = reload })
-    vim.fn.timer_start(1000, function()
-      local current = mtime()
-      if current and current ~= last_mtime then
-        last_mtime = current
-        reload()
-      end
-    end, { ['repeat'] = -1 })
-  '';
-  vimThemeBridge = pkgs.writeText "nixarchy-vim-theme-bridge.vim" ''
-    if exists('g:loaded_nixarchy_theme_bridge')
-      finish
-    endif
-    let g:loaded_nixarchy_theme_bridge = 1
-    let s:file = expand('~/.config/omarchy/runtime/vim-theme.vim')
-
-    function! s:reload() abort
-      if filereadable(s:file)
-        execute 'source ' . fnameescape(s:file)
-      endif
-    endfunction
-
-    command! OmarchyThemeReload call <SID>reload()
-    augroup nixarchy_theme_bridge
-      autocmd!
-      autocmd ColorScheme * call <SID>reload()
-    augroup END
-    call <SID>reload()
-
-    if exists('*timer_start')
-      let s:last_mtime = -1
-      function! s:watch(timer) abort
-        let current = getftime(s:file)
-        if current >= 0 && current !=# s:last_mtime
-          let s:last_mtime = current
-          call <SID>reload()
-        endif
-      endfunction
-      call timer_start(1000, function('<SID>watch'), {'repeat': -1})
-    endif
-  '';
   # A plugin-heavy shell answers IPC slower than omarchy-shell's 2 s default
   # right after a switch, and every rescan makes it slower still, so the old
   # 30 x (rescan + 2 s call) loop could hold Home Manager for minutes (#45).
@@ -288,7 +225,7 @@ in
       neovim = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Synchronize Neovim and LazyVim highlight groups at runtime.";
+        description = "Follow live desktop theme changes in Neovim and LazyVim; applies at startup only when no colorscheme is set.";
       };
 
       vim = lib.mkOption {
@@ -326,6 +263,12 @@ in
         pkgs.gnused
       ];
 
+      xdg.dataFile = lib.mkIf cfg.targets.neovim {
+        "nvim/site/plugin/nixarchy-theme.lua".source =
+          "${cfg.package}/share/hyprchroma/editors/nixarchy-theme.lua";
+        "nvim/site/colors/omarchy.lua".source = "${cfg.package}/share/hyprchroma/editors/omarchy.lua";
+      };
+
       home.file = {
         ".config/omarchy/hooks/theme-set.d/hyprchroma" = {
           source = "${cfg.package}/share/hyprchroma/hooks/hyprchroma";
@@ -336,14 +279,12 @@ in
           executable = true;
         };
       }
-      // lib.optionalAttrs cfg.targets.neovim {
-        ".local/share/nvim/site/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.lua" = {
-          source = neovimThemeBridge;
-        };
-      }
       // lib.optionalAttrs cfg.targets.vim {
         ".vim/pack/nixarchy/start/nixarchy-theme/plugin/nixarchy-theme.vim" = {
-          source = vimThemeBridge;
+          source = "${cfg.package}/share/hyprchroma/editors/nixarchy-theme.vim";
+        };
+        ".vim/pack/nixarchy/start/nixarchy-theme/colors/omarchy.vim" = {
+          source = "${cfg.package}/share/hyprchroma/editors/omarchy.vim";
         };
       }
       // lib.optionalAttrs cfg.electron.apps.vscode.enable {
