@@ -1,31 +1,122 @@
---- a/Panel.qml
-+++ b/Panel.qml
-@@ -190,6 +190,24 @@
+--- a/Panel.qml	2026-11-15 13:09:51.523214943 +0000
++++ b/Panel.qml	2026-11-15 13:12:30.440419184 +0000
+@@ -111,11 +111,6 @@
+   property string pluginAuthor: ""
+   readonly property bool outdated: dependencyPresent && installedVersion !== ""
+     && expectedVersion !== "" && root.olderThan(installedVersion, expectedVersion)
+-  // The service not installed at all: the same alert as an update, since the
+-  // same button clears it. Only once the check has run, so the bar does not
+-  // flash an alert while the panel is still finding out.
+-  readonly property bool installPending: dependencyChecked && !dependencyPresent
+-  readonly property bool serviceAlert: root.outdated || root.installPending
+ 
+   FileView {
+     id: manifestFile
+@@ -230,52 +225,22 @@
+     onExited: function(code) { root.daemonRunning = (code === 0) }
    }
  
+-  // Run in Omarchy's presented terminal, never inside omarchy-shell: this
+-  // authenticates, and a password prompt with nowhere to type is a hang. The
+-  // panel closes first so the terminal has the keyboard. Sentinels in the
+-  // runtime directory let the result be picked up after the panel is gone.
+-  // Installing and updating both run the same setup script, shipped with this
+-  // plugin, in Omarchy's presented terminal. It has to be a terminal: it asks
+-  // which optional frameworks you want, offers to install what those need, and
+-  // makepkg asks for a password -- none of which has anywhere to happen inside
+-  // omarchy-shell. The panel closes first so the terminal takes the keyboard.
+-  //
+-  // No sentinel files. An earlier version wrote .done/.failed markers into
+-  // $XDG_RUNTIME_DIR, falling back to /tmp -- a predictable name in a
+-  // world-writable directory, truncated with ":>", which is a symlink target
+-  // another account can plant. Nothing ever read them: onExited says when the
+-  // terminal finished and the version check that follows says whether it
+-  // worked.
+-  readonly property string setupScript:
+-    Quickshell.env("HOME") + "/.config/omarchy/plugins/" + root.moduleName
+-      + "/bin/hyprchroma-setup"
+-
    Process {
+-    id: installProcess
+-    command: [ "omarchy", "launch", "floating", "terminal", "with", "presentation", root.setupScript ]
 +    id: paletteActionProcess
-+    environment: ({ PATH: root.trustedPath })
+     environment: ({ PATH: root.trustedPath })
+-    onExited: { root.installing = false; presenceProcess.running = true }
+-  }
+-
+-  // Uninstalling is the same kind of job: it asks before each step and needs
+-  // a password for the package steps, so it runs in the presented terminal
+-  // too, from the script shipped beside setup.
+-  readonly property string uninstallScript:
+-    Quickshell.env("HOME") + "/.config/omarchy/plugins/" + root.moduleName
+-      + "/bin/hyprchroma-uninstall"
+-
+-  Process {
+-    id: uninstallProcess
+-    command: [ "omarchy", "launch", "floating", "terminal", "with", "presentation", root.uninstallScript ]
+-    environment: ({ PATH: root.trustedPath })
+-    onExited: presenceProcess.running = true
 +    onExited: function(code) {
 +      root.paletteActionMessage = code === 0
 +        ? root.paletteActionLabel + " complete"
 +        : root.paletteActionLabel + " failed"
 +      root.refreshStaleApps()
 +    }
-+  }
-+
+   }
+ 
+-  function openUninstall() {
+-    if (uninstallProcess.running || root.installing) return
+-    root.settingsOpen = false
+-    root.close()
+-    uninstallProcess.running = true
 +  function runPaletteAction(command, label) {
 +    if (paletteActionProcess.running) return
 +    root.paletteActionLabel = label
 +    paletteActionProcess.command = command
 +    paletteActionProcess.running = true
-+  }
-+
-+  Process {
-     id: restoreProcess
-     environment: ({ PATH: root.trustedPath })
-     onExited: settingsFile.reload()
-@@ -270,6 +288,137 @@
+   }
+ 
+   Process {
+@@ -348,17 +313,13 @@
+   // Additional Apps: Thunderbird and Pear Desktop, in a drop-down under its
+   // row on the main list. Its row has no switch of its own: it only opens this.
+   property bool appsOpen: false
+-  // Icons: a view of its own, like Settings, opened from its row on the main
+-  // list: the switch, the folder color, the icon set and app covers.
+-  property bool iconsOpen: false
+   readonly property bool mainShown: !root.guideOpen && !root.settingsOpen && !root.aboutOpen
+-                                    && !root.confirmRestartOpen && !root.iconsOpen
++                                    && !root.confirmRestartOpen
+ 
+   function openAbout() {
+     root.guideOpen = false
+     root.settingsOpen = false
+     root.appsOpen = false
+-    root.iconsOpen = false
+     root.aboutOpen = true
+   }
+ 
+@@ -376,19 +337,6 @@
+     onExited: { root.installing = false; presenceProcess.running = true }
+   }
+ 
+-  function installDependency() {
+-    if (root.installing) return
+-    root.installing = true
+-    if (root.dependencyPresent && !root.outdated && !root.daemonRunning) {
+-      // Only the service needs starting; that takes no password and no terminal.
+-      startDaemonProcess.running = true
+-      return
+-    }
+-    // Missing or too old: the same build either way.
+-    root.close()
+-    installProcess.running = true
+-  }
+-
+   // Applications with a window open that started before the palette was last
+   // written, so they are still drawing the previous theme. Kept in the panel
+   // rather than only in a notification: a notification is gone in seconds, and
+@@ -467,6 +415,137 @@
    readonly property int staleShown: 8
  
    property string activeTarget: ""
@@ -163,10 +254,738 @@
  
    // One list drives both the rows and the keyboard shortcuts, so the digit a
    // row shows is always the digit that toggles it.
-@@ -692,6 +841,63 @@
+@@ -502,7 +581,6 @@
+     { target: "dark-reader", label: "Dark Reader", icon: "󰈈", optional: true },
+     { target: "flatpak", label: "Flatpak apps", icon: "󰏗", optional: true },
+     { target: "browsers", label: "Additional browsers", icon: "󰖟", optional: true },
+-    { target: "icons", label: "Icons", icon: "\uf07b", optional: true, view: true },
+     { target: "apps", label: "Additional Apps", icon: "󰀻", optional: true, menu: true }
+   ]
+ 
+@@ -527,8 +605,7 @@
+     pear: true,
+     flatpak: false,
+     browsers: false,
+-    thunderbird: false,
+-    icons: false
++    thunderbird: false
+   })
+ 
+   function targetKey(target) {
+@@ -539,7 +616,7 @@
+ 
+   function targetEnabled(target) {
+     var key = targetKey(target)
+-    if (key === "flatpak" || key === "browsers" || key === "thunderbird" || key === "icons")
++    if (key === "flatpak" || key === "browsers" || key === "thunderbird")
+       return enabledTargets[key] === true
+     return enabledTargets[key] !== false
+   }
+@@ -554,8 +631,7 @@
+       pear: enabledTargets.pear !== false,
+       flatpak: enabledTargets.flatpak === true,
+       browsers: enabledTargets.browsers === true,
+-      thunderbird: enabledTargets.thunderbird === true,
+-      icons: enabledTargets.icons === true
++      thunderbird: enabledTargets.thunderbird === true
+     }
+     next[key] = enabled
+     enabledTargets = next
+@@ -596,155 +672,6 @@
+     onExited: settingsFile.reload()
+   }
+ 
+-  // ---- Icons -------------------------------------------------------------
+-  // What the Icons view shows comes from the service's icons/status.json,
+-  // rewritten after every folder recolor and around every apply, so a theme
+-  // change repaints this without polling. Anything in it is drawn as plain
+-  // text and every color is checked before it is used.
+-  property var iconStatus: ({})
+-  property string iconsError: ""
+-  readonly property bool iconsBusy: iconsProcess.running || iconStatus.applying === true
+-    || (refreshProcess.running && (root.activeTarget === "icons" || root.activeTarget === "all"))
+-  readonly property string folderMode: ["background", "accent", "border", "yaru"].indexOf(String(iconStatus.mode)) !== -1
+-    ? String(iconStatus.mode) : "accent"
+-  readonly property string iconSet: iconStatus.icon_set === "yaru" ? "yaru" : "reversal"
+-  readonly property bool iconCovers: iconStatus.covers !== false
+-  readonly property bool coversApply: root.iconSet === "reversal"
+-  readonly property var folderModes: [
+-    { id: "background", label: "Sidebar highlight", key: "1" },
+-    { id: "accent", label: "Accent", key: "2" },
+-    { id: "border", label: "Window border", key: "3" },
+-    { id: "yaru", label: "Theme's Yaru color", key: "4" }
+-  ]
+-  // Its row's number on the main list, which also takes the view back.
+-  readonly property int iconsRowNumber: {
+-    for (var i = 0; i < root.visibleFrameworks.length; i++)
+-      if (root.visibleFrameworks[i].view === true) return i + 1
+-    return 0
+-  }
+-
+-  function validHex(value) { return /^#[0-9a-fA-F]{6}$/.test(String(value || "")) }
+-  function folderFace() {
+-    return root.validHex(root.iconStatus.face) ? root.iconStatus.face
+-      : (root.bar ? root.bar.foreground : Commons.Color.popups.text)
+-  }
+-  function setInstalled(name) {
+-    var sets = root.iconStatus.sets || {}
+-    return !!(sets[name] && sets[name].installed === true)
+-  }
+-
+-  function openIcons() {
+-    root.guideOpen = false
+-    root.settingsOpen = false
+-    root.aboutOpen = false
+-    root.appsOpen = false
+-    root.iconsOpen = true
+-    iconsStatusProcess.running = true
+-  }
+-
+-  function runIcons(args) {
+-    if (iconsProcess.running || !root.dependencyPresent) return
+-    root.iconsError = ""
+-    iconsProcess.command = [ "/usr/bin/hyprchroma", "icons" ].concat(args)
+-    iconsProcess.running = true
+-  }
+-
+-  function setFolderMode(mode) { if (mode !== root.folderMode) root.runIcons(["folders", mode]) }
+-  function nextFolderMode() { root.runIcons(["folders", "next"]) }
+-  // Reversal not installed yet: choosing it offers the install instead, in the
+-  // same terminal setup uses, which switches to it once it is there.
+-  function setIconSet(name) {
+-    if (name === "reversal" && root.iconStatusKnown && !root.setInstalled("reversal")) {
+-      root.installReversal()
+-      return
+-    }
+-    if (name !== root.iconSet && root.setInstalled(name)) root.runIcons(["set", name])
+-  }
+-  readonly property bool iconStatusKnown: root.iconStatus.sets !== undefined
+-
+-  Process {
+-    id: reversalProcess
+-    command: [ "omarchy", "launch", "floating", "terminal", "with", "presentation", root.setupScript, "--reversal" ]
+-    environment: ({ PATH: root.trustedPath })
+-    onExited: iconsStatusProcess.running = true
+-  }
+-
+-  function installReversal() {
+-    if (reversalProcess.running || !root.dependencyPresent) return
+-    root.close()
+-    reversalProcess.running = true
+-  }
+-  // Plates are Reversal's shape; with Yaru every app keeps its own icon.
+-  function toggleCovers() {
+-    if (root.coversApply) root.runIcons(["covers", root.iconCovers ? "off" : "on"])
+-  }
+-  function reapplyIcons() { if (root.targetEnabled("icons")) root.runIcons(["apply"]) }
+-
+-  Process {
+-    id: iconsProcess
+-    environment: ({ PATH: root.trustedPath })
+-    stderr: StdioCollector {
+-      id: iconsStderr
+-      waitForEnd: true
+-    }
+-    onExited: function(code) {
+-      var lines = String(iconsStderr.text || "").trim().split("\n")
+-      root.iconsError = code === 0 ? "" : lines[lines.length - 1].replace(/^Hyprchroma: /, "").slice(0, 160)
+-      iconsStatusProcess.running = true
+-      root.refreshStaleApps()
+-    }
+-  }
+-
+-  Process {
+-    id: iconsStatusProcess
+-    command: [ "/usr/bin/hyprchroma", "icons", "status" ]
+-    environment: ({ PATH: root.trustedPath })
+-    stdout: StdioCollector {
+-      waitForEnd: true
+-      onStreamFinished: root.readIconStatus(text)
+-    }
+-  }
+-
+-  function readIconStatus(raw) {
+-    try {
+-      var data = JSON.parse(String(raw || ""))
+-      if (data && typeof data === "object" && !Array.isArray(data) && data.mode)
+-        root.iconStatus = data
+-    } catch (error) {
+-      // A partial write; the next change notice brings the whole file.
+-    }
+-  }
+-
+-  FileView {
+-    id: iconsStatusFile
+-    path: root.stateDir + "/icons/status.json"
+-    printErrors: false
+-    watchChanges: true
+-    onLoadFailed: root.iconStatusLoaded = false
+-    onLoaded: { root.iconStatusLoaded = true; root.readIconStatus(text()) }
+-    onFileChanged: reload()
+-  }
+-
+-  function iconsCoversText() {
+-    var last = root.iconStatus.last_apply || {}
+-    if (last.clip === undefined) return "not applied yet"
+-    var drawn = (last.clip || 0) + (last.plate || 0) + (last.plain || 0)
+-    if (root.iconSet === "yaru") return drawn + " as Yaru or the app's own"
+-    if (!root.iconCovers) return (last.plain || 0) + " drawn as they are"
+-    return drawn + " (" + (last.plate || 0) + " on a plate, " + (last.clip || 0) + " clipped)"
+-  }
+-
+-  function iconsAppliedText() {
+-    var last = root.iconStatus.last_apply || {}
+-    if (!root.targetEnabled("icons")) return "off"
+-    if (!last.applied_at) return "never"
+-    var seconds = Math.max(0, Math.round(Date.now() / 1000 - last.applied_at))
+-    if (seconds < 60) return "just now"
+-    if (seconds < 3600) return Math.round(seconds / 60) + " min ago"
+-    if (seconds < 86400) return Math.round(seconds / 3600) + " h ago"
+-    return Math.round(seconds / 86400) + " d ago"
+-  }
+-
+   // Closes and relaunches every application the guide lists, the one
+   // mechanism behind the guide's own button, the confirmation popup's "yes",
+   // and (from the service's side, on its own) restartMode=force. Always
+@@ -759,7 +686,6 @@
+     root.settingsOpen = false
+     root.aboutOpen = false
+     root.appsOpen = false
+-    root.iconsOpen = false
+     root.close()
+   }
+ 
+@@ -781,7 +707,6 @@
+     root.settingsOpen = false
+     root.aboutOpen = false
+     root.appsOpen = false
+-    root.iconsOpen = false
+     root.confirmRestartOpen = true
+   }
+ 
+@@ -807,7 +732,6 @@
+     root.settingsOpen = false
+     root.aboutOpen = false
+     root.appsOpen = false
+-    root.iconsOpen = false
+     dismissProcess.running = true
+     root.close()
+   }
+@@ -823,12 +747,6 @@
+   // digits match each row's position, which the row displays.
+   function handleKey(text) {
+     var key = (text || "").toLowerCase()
+-    // "i" only does anything while the panel is offering it, so it cannot be
+-    // pressed by accident into an install nobody asked for.
+-    if (key === "i" && root.dependencyChecked && !root.ready) {
+-      root.installDependency()
+-      return
+-    }
+     // Nothing below this can work without hyprchroma: the guide lists
+     // applications a framework toggle left stale, and there is no framework
+     // toggle without the service. A key that would open it is ignored rather
+@@ -849,7 +767,6 @@
+       root.settingsOpen = false
+       root.aboutOpen = false
+       root.appsOpen = false
+-      root.iconsOpen = false
+       root.guideOpen = !root.guideOpen
+       if (root.guideOpen) root.refreshStaleApps()
+       return
+@@ -858,7 +775,6 @@
+       root.guideOpen = false
+       root.aboutOpen = false
+       root.appsOpen = false
+-      root.iconsOpen = false
+       root.settingsOpen = !root.settingsOpen
+       return
+     }
+@@ -869,34 +785,17 @@
+       if (key === "d") root.dismissStale()
+       return
+     }
+-    // Settings: c flips the restart mode, b the bar alert, u opens the
+-    // uninstaller, and a digit removes or adds back the framework beside it.
++    // Settings: c flips the restart mode, b the bar alert, and a digit
++    // removes or adds back the framework beside it.
+     if (root.settingsOpen) {
+       if (key === "c") { root.toggleRestartMode(); return }
+       if (key === "b") { root.toggleBarAlert(); return }
+-      if (key === "u") { root.openUninstall(); return }
+       var back = parseInt(key, 10) - 1
+       if (back >= 0 && back < root.settingsFrameworks.length) {
+         root.toggleRemoved(root.settingsFrameworks[back].target)
+       }
+       return
+     }
+-    // Icons: i switches it, 1-4 pick where folders take their color, r and y
+-    // the icon set, c covers, a applies again; its own row's number goes back.
+-    // "?" still opens About, which credits the icon sets.
+-    if (root.iconsOpen) {
+-      if (key === "i") { root.setTargetEnabled("icons", !root.targetEnabled("icons")); return }
+-      if (key === "1") { root.setFolderMode("background"); return }
+-      if (key === "2") { root.setFolderMode("accent"); return }
+-      if (key === "3") { root.setFolderMode("border"); return }
+-      if (key === "4") { root.setFolderMode("yaru"); return }
+-      if (key === "r") { root.setIconSet("reversal"); return }
+-      if (key === "y") { root.setIconSet("yaru"); return }
+-      if (key === "c") { root.toggleCovers(); return }
+-      if (key === "a") { root.reapplyIcons(); return }
+-      if (key === String(root.iconsRowNumber)) { root.iconsOpen = false; return }
+-      if (key !== "?") return
+-    }
+     // About: i for an issue or question, g for the source, b for a coffee, ? back.
+     if (root.aboutOpen) {
+       if (key === "i") root.openLink(root.issuesUrl)
+@@ -917,7 +816,6 @@
+     if (index >= 0 && index < root.visibleFrameworks.length) {
+       var entry = root.visibleFrameworks[index]
+       if (entry.menu === true) root.appsOpen = !root.appsOpen
+-      else if (entry.view === true) root.openIcons()
+       else root.setTargetEnabled(entry.target, !root.targetEnabled(entry.target))
+     } else if (root.appsListShown) {
+       // The drop-down's rows are numbered on from the list above them, and
+@@ -987,9 +885,6 @@
+   onOpenedChanged: {
+     if (root.opened) {
+       presenceProcess.running = true
+-      if (root.dependencyPresent) iconsStatusProcess.running = true
+-    } else {
+-      root.iconsOpen = false
+     }
+   }
+ 
+@@ -1013,20 +908,19 @@
+           pear: frameworks.pear !== false,
+           flatpak: frameworks.flatpak === true,
+           browsers: frameworks.browsers === true,
+-          thunderbird: frameworks.thunderbird === true,
+-          icons: frameworks.icons === true
++          thunderbird: frameworks.thunderbird === true
+         }
+         // "force", from before it was removed, now means the confirmation.
+         var mode = parsed.restartMode === "force" ? "confirm" : parsed.restartMode
+         root.restartMode = root.restartModes.indexOf(mode) !== -1 ? mode : "off"
+       } catch (error) {
+-        root.enabledTargets = { gtk: true, qtKde: true, darkReader: true, pear: true, flatpak: false, browsers: false, thunderbird: false, icons: false }
++        root.enabledTargets = { gtk: true, qtKde: true, darkReader: true, pear: true, flatpak: false, browsers: false, thunderbird: false }
+         root.restartMode = "off"
+       }
+     }
+     onLoadFailed: {
+       root.settingsLoaded = false
+-      root.enabledTargets = { gtk: true, qtKde: true, darkReader: true, pear: true, flatpak: false, browsers: false, thunderbird: false, icons: false }
++      root.enabledTargets = { gtk: true, qtKde: true, darkReader: true, pear: true, flatpak: false, browsers: false, thunderbird: false }
+       root.restartMode = "off"
+     }
+     onFileChanged: reload()
+@@ -1061,27 +955,23 @@
+   }
+ 
+   // A file whose folder does not exist yet is never watched: the folder is
+-  // made later -- by setup, on a first install or after Uninstall removed
+-  // it -- and the file appears without a word. Measured on Quickshell: a
++  // made later and the file appears without a word. Measured on Quickshell: a
+   // missing file in an existing folder is noticed when it is created; one in
+   // a missing folder is not, until reload() loads it, after which changes
+   // are watched as usual. So while the service is here and a file has not
+   // loaded, it is asked again every two seconds; once all have, this stops.
+   property bool settingsLoaded: false
+   property bool statusLoaded: false
+-  property bool iconStatusLoaded: false
+   function reloadStateFiles() {
+     if (!root.settingsLoaded) settingsFile.reload()
+     if (!root.statusLoaded) statusFile.reload()
+-    if (!root.iconStatusLoaded && root.targetEnabled("icons")) iconsStatusFile.reload()
+   }
+   Timer {
+     id: stateFileRetry
+     interval: 2000
+     repeat: true
+     running: root.dependencyPresent
+-      && (!root.settingsLoaded || !root.statusLoaded
+-          || (!root.iconStatusLoaded && root.targetEnabled("icons")))
++      && (!root.settingsLoaded || !root.statusLoaded)
+     onTriggered: root.reloadStateFiles()
+   }
+ 
+@@ -1107,7 +997,6 @@
+         else if (root.guideOpen) root.guideOpen = false
+         else if (root.settingsOpen) root.settingsOpen = false
+         else if (root.aboutOpen) root.aboutOpen = false
+-        else if (root.iconsOpen) root.iconsOpen = false
+         else if (root.appsOpen) root.appsOpen = false
+         else root.close()
+       }
+@@ -1254,8 +1143,6 @@
+                 ? "Settings"
+                 : root.aboutOpen
+                 ? "About"
+-                : root.iconsOpen
+-                ? "Icons"
+                 : root.guideOpen
+                   ? (root.staleWindowCount > 0 ? root.windowsPhrase(root.staleWindowCount) + " to close"
+                                               : "Nothing to close")
+@@ -1658,16 +1545,6 @@
+             foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+           }
+ 
+-          // Opens a terminal that asks before each step; nothing is removed
+-          // from here.
+-          Button {
+-            width: settings.width
+-            text: "Uninstall Omarchroma...  (u)"
+-            iconText: "\udb80\uddb4"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            onClicked: root.openUninstall()
+-          }
+-
+           Button {
+             width: settings.width
+             text: "Back  (s)"
+@@ -1764,338 +1641,6 @@
+           }
+         }
+ 
+-        // Icons: the framework's switch, then where folders take their color,
+-        // the icon set, and app covers. Choices made while it is off are kept
+-        // and applied once it is switched on.
+-        Column {
+-          id: iconsView
+-          visible: root.iconsOpen && !root.confirmRestartOpen
+-          width: content.width
+-          spacing: Style.space(4)
+-
+-          Item {
+-            width: iconsView.width
+-            height: Math.max(Style.spacing.controlHeight, iconsSwitchLabel.implicitHeight)
+-
+-            Text {
+-              id: iconsSwitchIcon
+-              text: ""
+-              color: root.targetEnabled("icons") ? root.folderFace() : Commons.Color.muted
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.body
+-              anchors.left: parent.left
+-              anchors.verticalCenter: parent.verticalCenter
+-              Behavior on color { ColorAnimation { duration: 220 } }
+-            }
+-
+-            Text {
+-              id: iconsSwitchLabel
+-              text: "Icons follow the theme"
+-              color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.body
+-              anchors.left: iconsSwitchIcon.right
+-              anchors.leftMargin: Style.space(10)
+-              anchors.right: iconsSwitchKey.left
+-              anchors.rightMargin: Style.space(10)
+-              anchors.verticalCenter: parent.verticalCenter
+-              elide: Text.ElideRight
+-            }
+-
+-            Text {
+-              id: iconsSwitchKey
+-              text: "i"
+-              color: Commons.Color.muted
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.caption
+-              anchors.right: iconsSwitch.left
+-              anchors.rightMargin: Style.space(10)
+-              anchors.verticalCenter: parent.verticalCenter
+-            }
+-
+-            ToggleSwitch {
+-              id: iconsSwitch
+-              checked: root.targetEnabled("icons")
+-              busy: refreshProcess.running && root.activeTarget === "icons"
+-              foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              anchors.right: parent.right
+-              anchors.verticalCenter: parent.verticalCenter
+-              onToggled: root.setTargetEnabled("icons", !checked)
+-            }
+-          }
+-
+-          Text {
+-            width: iconsView.width
+-            text: refreshProcess.running && root.activeTarget === "icons"
+-              ? (root.targetEnabled("icons") ? "Applying icons..." : "Restoring each theme's own icons...")
+-              : root.targetEnabled("icons")
+-                ? "Every Omarchy theme uses these; a theme change recolors them."
+-                : "Off: each theme keeps its own icons. Choices below apply once on."
+-            textFormat: Text.PlainText
+-            color: Commons.Color.muted
+-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-            font.pixelSize: Style.font.caption
+-            wrapMode: Text.WordWrap
+-          }
+-
+-          Item { width: iconsView.width; height: Style.space(4) }
+-
+-          PanelSectionHeader {
+-            text: "Folder color"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+-          }
+-
+-          Repeater {
+-            model: root.folderModes
+-            delegate: Item {
+-              id: modeRow
+-              required property var modelData
+-              readonly property bool selected: root.folderMode === modelData.id
+-              readonly property var info: (root.iconStatus.modes || {})[modelData.id] || {}
+-              readonly property color fg: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              width: iconsView.width
+-              height: Style.spacing.controlHeight
+-
+-              Rectangle {
+-                anchors.fill: parent
+-                radius: Style.cornerRadius
+-                color: Qt.rgba(modeRow.fg.r, modeRow.fg.g, modeRow.fg.b,
+-                               modeRow.selected ? 0.10 : (modeMouse.containsMouse ? 0.05 : 0))
+-              }
+-
+-              Rectangle {
+-                id: modeSwatch
+-                width: Style.space(18)
+-                height: Style.space(14)
+-                radius: Math.min(Style.cornerRadius, Style.space(3))
+-                color: root.validHex(modeRow.info.face) ? modeRow.info.face : "transparent"
+-                border.width: 1
+-                border.color: Qt.rgba(modeRow.fg.r, modeRow.fg.g, modeRow.fg.b, 0.28)
+-                anchors.left: parent.left
+-                anchors.leftMargin: Style.space(6)
+-                anchors.verticalCenter: parent.verticalCenter
+-              }
+-
+-              Text {
+-                text: modeRow.modelData.label
+-                textFormat: Text.PlainText
+-                color: modeRow.fg
+-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-                font.pixelSize: Style.font.body
+-                font.bold: modeRow.selected
+-                anchors.left: modeSwatch.right
+-                anchors.leftMargin: Style.space(10)
+-                anchors.right: modeHex.left
+-                anchors.rightMargin: Style.space(8)
+-                anchors.verticalCenter: parent.verticalCenter
+-                elide: Text.ElideRight
+-              }
+-
+-              Text {
+-                id: modeHex
+-                text: root.validHex(modeRow.info.face) ? modeRow.info.face : ""
+-                textFormat: Text.PlainText
+-                color: Commons.Color.muted
+-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-                font.pixelSize: Style.font.caption
+-                anchors.right: modeKey.left
+-                anchors.rightMargin: Style.space(10)
+-                anchors.verticalCenter: parent.verticalCenter
+-              }
+-
+-              Text {
+-                id: modeKey
+-                text: modeRow.selected ? "" : modeRow.modelData.key
+-                textFormat: Text.PlainText
+-                color: modeRow.selected ? modeRow.fg : Commons.Color.muted
+-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-                font.pixelSize: Style.font.caption
+-                width: Style.space(12)
+-                horizontalAlignment: Text.AlignHCenter
+-                anchors.right: parent.right
+-                anchors.rightMargin: Style.space(6)
+-                anchors.verticalCenter: parent.verticalCenter
+-              }
+-
+-              MouseArea {
+-                id: modeMouse
+-                anchors.fill: parent
+-                hoverEnabled: true
+-                cursorShape: Qt.PointingHandCursor
+-                onClicked: root.setFolderMode(modeRow.modelData.id)
+-              }
+-            }
+-          }
+-
+-          Item { width: iconsView.width; height: Style.space(6) }
+-
+-          PanelSectionHeader {
+-            text: "Icon set  (r / y)"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+-          }
+-
+-          ButtonGroup {
+-            width: iconsView.width
+-            value: root.iconSet
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+-            focusable: false
+-            options: [
+-              { value: "reversal", label: "Reversal" + (root.setInstalled("reversal") ? "" : " (not installed)"),
+-                tooltip: root.setInstalled("reversal") ? "" : "Not installed: press r to install it from the AUR (reversal-icon-theme-git)" },
+-              { value: "yaru", label: "Yaru" + (root.setInstalled("yaru") ? "" : " (missing)"),
+-                tooltip: root.setInstalled("yaru") ? "" : "Not installed (Omarchy normally ships it): sudo pacman -S yaru-icon-theme" }
+-            ]
+-            onChanged: function(value) { root.setIconSet(value) }
+-          }
+-
+-          Item { width: iconsView.width; height: Style.space(2) }
+-
+-          Item {
+-            width: iconsView.width
+-            height: Math.max(Style.spacing.controlHeight, coversLabel.implicitHeight)
+-            opacity: root.coversApply ? 1 : 0.45
+-
+-            Text {
+-              id: coversIcon
+-              text: "󰁝"
+-              color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.body
+-              anchors.left: parent.left
+-              anchors.verticalCenter: parent.verticalCenter
+-            }
+-
+-            Text {
+-              id: coversLabel
+-              text: root.coversApply ? "Cover missing app icons" : "Covers: Reversal only"
+-              color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.body
+-              anchors.left: coversIcon.right
+-              anchors.leftMargin: Style.space(10)
+-              anchors.right: coversKey.left
+-              anchors.rightMargin: Style.space(10)
+-              anchors.verticalCenter: parent.verticalCenter
+-              elide: Text.ElideRight
+-            }
+-
+-            Text {
+-              id: coversKey
+-              text: "c"
+-              color: Commons.Color.muted
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.caption
+-              anchors.right: coversSwitch.left
+-              anchors.rightMargin: Style.space(10)
+-              anchors.verticalCenter: parent.verticalCenter
+-            }
+-
+-            ToggleSwitch {
+-              id: coversSwitch
+-              checked: root.iconCovers && root.coversApply
+-              interactive: root.coversApply
+-              busy: root.iconsBusy
+-              foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-              anchors.right: parent.right
+-              anchors.verticalCenter: parent.verticalCenter
+-              onToggled: root.toggleCovers()
+-            }
+-          }
+-
+-          Item { width: iconsView.width; height: Style.space(4) }
+-          PanelSeparator { foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text }
+-          Item { width: iconsView.width; height: Style.space(4) }
+-
+-          Repeater {
+-            model: [
+-              { label: "Inherits", value: root.targetEnabled("icons") ? String(root.iconStatus.base || "") : "off" },
+-              { label: "Folder source", value: root.validHex(root.iconStatus.source) ? root.iconStatus.source : "" },
+-              { label: "App covers", value: root.iconsCoversText() },
+-              { label: "Last applied", value: root.iconsAppliedText() }
+-            ]
+-            delegate: Item {
+-              id: iconFact
+-              required property var modelData
+-              width: iconsView.width
+-              height: Math.max(iconFactLabel.implicitHeight, iconFactValue.implicitHeight) + Style.space(2)
+-
+-              Text {
+-                id: iconFactLabel
+-                text: iconFact.modelData.label
+-                color: Commons.Color.muted
+-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-                font.pixelSize: Style.font.caption
+-                anchors.left: parent.left
+-                anchors.verticalCenter: parent.verticalCenter
+-              }
+-
+-              Text {
+-                id: iconFactValue
+-                text: iconFact.modelData.value
+-                textFormat: Text.PlainText
+-                color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-                font.pixelSize: Style.font.caption
+-                horizontalAlignment: Text.AlignRight
+-                anchors.left: iconFactLabel.right
+-                anchors.leftMargin: Style.space(10)
+-                anchors.right: parent.right
+-                anchors.verticalCenter: parent.verticalCenter
+-                elide: Text.ElideLeft
+-              }
+-            }
+-          }
+-
+-          Text {
+-            readonly property string problem: root.iconsError !== "" ? root.iconsError
+-              : (root.targetEnabled("icons") ? String(root.iconStatus.error || "").slice(0, 160) : "")
+-            visible: root.iconsBusy || problem !== ""
+-            width: iconsView.width
+-            topPadding: Style.space(4)
+-            text: root.iconsBusy ? "Applying..." : problem
+-            textFormat: Text.PlainText
+-            color: root.iconsBusy ? Commons.Color.muted : (root.bar ? root.bar.urgent : Commons.Color.urgent)
+-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-            font.pixelSize: Style.font.caption
+-            wrapMode: Text.WordWrap
+-          }
+-
+-          PanelSeparator { foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text }
+-
+-          // Reversal is the default pack; until it is installed, Icons uses
+-          // Yaru and this offers it.
+-          Button {
+-            width: iconsView.width
+-            visible: root.iconStatusKnown && !root.setInstalled("reversal")
+-            enabled: !reversalProcess.running
+-            text: "Install Reversal...  (r)"
+-            iconText: "\udb80\uddda"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            onClicked: root.installReversal()
+-          }
+-
+-          Button {
+-            width: iconsView.width
+-            visible: root.targetEnabled("icons")
+-            enabled: !root.iconsBusy
+-            text: root.iconsBusy ? "Applying..." : "Apply again  (a)"
+-            iconText: "󰑐"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            onClicked: root.reapplyIcons()
+-          }
+-
+-          Button {
+-            width: iconsView.width
+-            text: "Back  (" + root.iconsRowNumber + ")"
+-            iconText: "󰌍"
+-            foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-            onClicked: root.iconsOpen = false
+-          }
+-        }
+-
+         // Same break the fan panel uses between its header and its controls:
+         // a gap, a rule, and a gap. It sits above the status line.
+         Item {
+@@ -2117,6 +1662,63 @@
  
          Text {
-           visible: !root.guideOpen && root.ready
+           visible: root.mainShown && root.ready
 +          text: "Shell  " + root.targetShort("starship") + " " + root.shellLabel("starship")
 +            + "  " + root.targetShort("bash") + " " + root.shellLabel("bash")
 +            + "  " + root.targetShort("zsh") + " " + root.shellLabel("zsh")
@@ -180,7 +999,7 @@
 +        }
 +
 +        Text {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          text: "Terminals  " + root.targetShort("kitty") + " " + root.terminalLabel("kitty")
 +            + "  " + root.targetShort("foot") + " " + root.terminalLabel("foot")
 +            + "  " + root.targetShort("ghostty") + " " + root.terminalLabel("ghostty")
@@ -193,7 +1012,7 @@
 +        }
 +
 +        Text {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          text: "Electron  " + root.targetShort("vscode") + " " + root.electronLabel("vscode")
 +            + "  " + root.targetShort("discord") + " " + root.electronLabel("discord")
 +            + "  " + root.targetShort("slack") + " " + root.electronLabel("slack")
@@ -207,7 +1026,7 @@
 +        }
 +
 +        Text {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          text: "Desktop  " + root.targetShort("gtk") + " " + root.desktopLabel("gtk")
 +            + "  " + root.targetShort("qtKde") + " " + root.desktopLabel("qtKde")
 +            + "  " + root.targetShort("darkReader") + " " + root.desktopLabel("darkReader")
@@ -223,16 +1042,149 @@
 +        }
 +
 +        Text {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
            text: refreshProcess.running
              ? (root.targetEnabled(root.activeTarget)
                  ? "Synchronizing " + root.activeTarget + "..."
-@@ -806,6 +1012,42 @@
+@@ -2129,42 +1731,31 @@
+           width: parent.width
+         }
+ 
+-        // Until hyprchroma exists there is exactly one thing to do from this
+-        // panel, so it gets exactly one control: the header above already
+-        // says what panel this is, and this button says the one action
+-        // available, in the same "Label  (key)" shape as the buttons below
+-        // it once the service is ready. Everything below this block -- the
+-        // framework toggles, the separator, refresh, the close-apps count --
+-        // is real only once the service is; each is gated on root.ready for
+-        // the same reason this replaces the old descriptive sentence.
+-        Button {
++        Text {
+           visible: root.mainShown && root.dependencyChecked && !root.ready
++          text: !root.dependencyPresent
++            ? "The hyprchroma service is not available."
++            : root.outdated
++                ? "The hyprchroma service is outdated."
++                : "The hyprchroma service is not running."
++          color: Commons.Color.muted
++          font.family: root.bar ? root.bar.fontFamily : Style.font.family
++          font.pixelSize: Style.font.caption
++          wrapMode: Text.WordWrap
++          width: parent.width
++        }
++
++        Button {
++          visible: root.mainShown && root.dependencyChecked && root.dependencyPresent && !root.outdated && !root.daemonRunning
+           width: content.width
+           enabled: !root.installing
+-          text: root.installing
+-            ? "Working..."
+-            : (!root.dependencyPresent
+-                ? "Install  (i)"
+-                : root.outdated ? "Update  (i)" : "Start  (i)")
+-          // Lit in the theme's alert color while the service is behind this
+-          // panel -- the color the bar icon takes, since this is what clears
+-          // it: a fill and a solid border of it, under the panel's own text,
+-          // which stays readable where a theme's alert color is a muted one.
+-          // Drawn here rather than through the kit's "selected" state, which a
+-          // theme may fix to a color of its own.
+-          readonly property color alertColor: root.bar ? root.bar.urgent : Commons.Color.urgent
++          text: root.installing ? "Working..." : "Start"
+           foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+-          background: root.serviceAlert ? Util.alpha(alertColor, 0.30) : "transparent"
+-
+-          Rectangle {
+-            anchors.fill: parent
+-            visible: root.serviceAlert
+-            color: "transparent"
+-            radius: parent.radius
+-            border.width: 1
+-            border.color: parent.alertColor
++          onClicked: {
++            if (root.installing) return
++            root.installing = true
++            startDaemonProcess.running = true
+           }
+-          onClicked: root.installDependency()
+         }
+ 
+         Repeater {
+@@ -2186,21 +1777,10 @@
+               onClicked: root.appsOpen = !root.appsOpen
+             }
+ 
+-            // Icons: the row opens its view; the switch is inside it.
+-            MouseArea {
+-              visible: row.modelData.view === true
+-              anchors.fill: parent
+-              cursorShape: Qt.PointingHandCursor
+-              onClicked: root.openIcons()
+-            }
+-
+             Text {
+               id: icon
+               text: row.modelData.icon
+-              // The Icons row's folder is drawn in the folder color itself.
+-              color: row.modelData.view === true && root.targetEnabled("icons")
+-                ? root.folderFace()
+-                : (root.bar ? root.bar.foreground : Commons.Color.popups.text)
++              color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+               font.family: root.bar ? root.bar.fontFamily : Style.font.family
+               font.pixelSize: Style.font.body
+               anchors.left: parent.left
+@@ -2215,24 +1795,10 @@
+               font.pixelSize: Style.font.body
+               anchors.left: icon.right
+               anchors.leftMargin: Style.space(10)
+-              anchors.right: rowState.visible ? rowState.left : keyHint.left
+-              anchors.rightMargin: Style.space(10)
+-              anchors.verticalCenter: parent.verticalCenter
+-              elide: Text.ElideRight
+-            }
+-
+-            // A view row has no switch to show its state, so it says it.
+-            Text {
+-              id: rowState
+-              visible: row.modelData.view === true
+-              text: root.targetEnabled("icons") ? (root.iconSet === "yaru" ? "Yaru" : "Reversal") : "Off"
+-              textFormat: Text.PlainText
+-              color: Commons.Color.muted
+-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+-              font.pixelSize: Style.font.caption
+               anchors.right: keyHint.left
+               anchors.rightMargin: Style.space(10)
+               anchors.verticalCenter: parent.verticalCenter
++              elide: Text.ElideRight
+             }
+ 
+             // The key that toggles this row, shown so the shortcut is
+@@ -2250,7 +1816,7 @@
+ 
+             ToggleSwitch {
+               id: toggle
+-              visible: row.modelData.menu !== true && row.modelData.view !== true
++              visible: row.modelData.menu !== true
+               checked: root.targetEnabled(row.modelData.target)
+               busy: refreshProcess.running
+               foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+@@ -2261,9 +1827,8 @@
+ 
+             // Where the others have their switch, so the keys stay in a column.
+             Text {
+-              visible: row.modelData.menu === true || row.modelData.view === true
+-              text: row.modelData.view === true ? "\udb80\udd42"
+-                : (root.appsOpen ? "\udb80\udd43" : "\udb80\udd40")
++              visible: row.modelData.menu === true
++              text: root.appsOpen ? "\udb80\udd43" : "\udb80\udd40"
+               color: root.bar ? root.bar.foreground : Commons.Color.popups.text
+               font.family: root.bar ? root.bar.fontFamily : Style.font.family
+               // Larger and bold, to hold its own beside the switches above it.
+@@ -2344,6 +1909,42 @@
          // service, and with none installed they were showing "Refresh
          // enabled" and "Nothing to close" over an otherwise empty panel --
          // controls for a thing that does not exist yet.
 +        Text {
-+          visible: !root.guideOpen && root.ready && root.paletteActionMessage !== ""
++          visible: root.mainShown && root.ready && root.paletteActionMessage !== ""
 +          text: root.paletteActionMessage
 +          color: Commons.Color.muted
 +          font.family: root.bar ? root.bar.fontFamily : Style.font.family
@@ -241,7 +1193,7 @@
 +        }
 +
 +        Button {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Saving..." : "Capture palette"
 +          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
@@ -250,7 +1202,7 @@
 +        }
 +
 +        Button {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Restoring..." : "Restore captured"
 +          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
@@ -259,7 +1211,7 @@
 +        }
 +
 +        Button {
-+          visible: !root.guideOpen && root.ready
++          visible: root.mainShown && root.ready
 +          width: content.width
 +          text: paletteActionProcess.running ? "Restoring..." : "Restore stock"
 +          foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
@@ -268,5 +1220,63 @@
 +        }
 +
          PanelSeparator {
-           visible: !root.guideOpen && root.ready
-           foreground: root.bar ? root.bar.foreground : Color.popups.text
+           visible: root.mainShown && root.ready
+           foreground: root.bar ? root.bar.foreground : Commons.Color.popups.text
+--- a/BarWidget.qml	2026-11-15 13:09:51.523317597 +0000
++++ b/BarWidget.qml	2026-11-15 13:12:30.437227947 +0000
+@@ -21,13 +21,10 @@
+   readonly property int staleCount: panelLoader.item && panelLoader.item.staleWindowCount
+     ? panelLoader.item.staleWindowCount : 0
+   // A service older than this plugin is one more thing to deal with, and says
+-  // so the same way: the icon in the urgent color, counting it as one. The
+-  // panel's Update button, lit in the same color, is what clears it.
++  // so the same way: the icon in the urgent color, counting it as one.
+   readonly property bool updatePending: panelLoader.item ? panelLoader.item.outdated === true : false
+-  // Not installed at all counts as one too, cleared by the panel's Install.
+-  readonly property bool installPending: panelLoader.item ? panelLoader.item.installPending === true : false
+   readonly property int alertCount: root.barAlert
+-    ? root.staleCount + (root.updatePending || root.installPending ? 1 : 0) : 0
++    ? root.staleCount + (root.updatePending ? 1 : 0) : 0
+ 
+   function open() { if (panelLoader.item) panelLoader.item.open() }
+   function close() { if (panelLoader.item) panelLoader.item.close() }
+@@ -48,11 +45,6 @@
+     panel.setTargetEnabled(target, !panel.targetEnabled(target))
+   }
+ 
+-  function nextFolderColor() {
+-    var panel = panelLoader.item
+-    if (panel && panel.targetEnabled("icons")) panel.nextFolderMode()
+-  }
+-
+   function refreshEnabled() {
+     if (panelLoader.item) panelLoader.item.refresh("all")
+   }
+@@ -105,8 +97,6 @@
+     function toggleThunderbird(): void { root.toggleFramework("thunderbird") }
+     function toggleFlatpak(): void { root.toggleFramework("flatpak") }
+     function toggleBrowsers(): void { root.toggleFramework("browsers") }
+-    function toggleIcons(): void { root.toggleFramework("icons") }
+-    function nextFolderColor(): void { root.nextFolderColor() }
+     function refresh(): void { root.refreshEnabled() }
+     // Opens the same confirmation the guide's own "Restart All" button leads
+     // to, for a key of your own in bindings.lua. Opens the panel too: unlike a
+@@ -132,16 +122,12 @@
+     tooltipText: root.opened ? "Close Omarchroma"
+       : root.alertCount === 0 ? "Open Omarchroma"
+       : "Open Omarchroma: "
+-        + (root.installPending ? "1 install pending (press i)"
+-            : root.updatePending ? "1 service update pending" : "")
+-        + ((root.updatePending || root.installPending) && root.staleCount > 0 ? ", and " : "")
++        + (root.updatePending ? "1 service update pending" : "")
++        + (root.updatePending && root.staleCount > 0 ? ", and " : "")
+         + (root.staleCount > 0
+             ? panelLoader.item.windowsPhrase(root.staleCount) + " to close for the new theme" : "")
+     onPressed: function(buttonCode) {
+       if (buttonCode === Qt.LeftButton) root.togglePanel()
+-      // Right click cycles where folders take their color, without opening
+-      // the panel -- only while Icons is on, so it never changes anything else.
+-      else if (buttonCode === Qt.RightButton) root.nextFolderColor()
+     }
+   }
+ 

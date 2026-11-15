@@ -3,7 +3,6 @@
   stdenvNoCC,
   coreutils,
   jq,
-  perl,
   engine,
   src,
 }:
@@ -17,16 +16,11 @@ stdenvNoCC.mkDerivation {
   patches = [ ./patches/omarchroma-panel.patch ];
 
   postPatch = ''
-    # shortcut: omarchroma before 3.2.3 reads Color unqualified, which Qt 6.12's
-    # QtQuick Color singleton shadows; drop once the omarchroma input is >= 3.2.3.
-    perl -pi -e 's/(^|[^.A-Za-z_])Color\.(?=[a-z])/$1Commons.Color./g' Panel.qml
-    grep -q '^import qs.Commons as Commons$' Panel.qml || sed -i 's/^import qs.Commons$/&\nimport qs.Commons as Commons/' Panel.qml
     substituteInPlace Panel.qml \
-      --replace '/usr/bin/hyprchroma' '${engine}/bin/hyprchroma' \
-      --replace '/usr/bin/hyprchroma-setup' '${engine}/bin/hyprchroma-setup' \
-      --replace '"/usr/bin/test"' '"${coreutils}/bin/test"' \
-        --replace '"/usr/bin:/usr/share/omarchy/bin"' \
-          '"${engine}/bin:${coreutils}/bin:/run/current-system/sw/bin"'
+      --replace-fail '/usr/bin/hyprchroma' '${engine}/bin/hyprchroma' \
+      --replace-fail '"/usr/bin/test"' '"${coreutils}/bin/test"' \
+      --replace-fail '"/usr/bin:/usr/share/omarchy/bin"' \
+        '"${engine}/bin:${coreutils}/bin:/run/current-system/sw/bin"'
   '';
 
   installPhase = ''
@@ -41,11 +35,24 @@ stdenvNoCC.mkDerivation {
 
   nativeBuildInputs = [
     jq
-    perl
   ];
 
+  doCheck = true;
   checkPhase = ''
+    runHook preCheck
     ${jq}/bin/jq empty manifest.json
+    runHook postCheck
+  '';
+
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    if grep -nE '/usr/bin/|/usr/share/|hyprchroma-setup|hyprchroma-uninstall|"icons"|toggleFramework\("icons"\)|target: "icons"|targetEnabled\("icons"\)|setTargetEnabled\("icons"|iconsStatusFile|nextFolderColor|installPending' \
+      "$out/Panel.qml" "$out/BarWidget.qml"; then
+      echo "Forbidden pattern found in installed QML files" >&2
+      exit 1
+    fi
+    runHook postInstallCheck
   '';
 
   meta = {
