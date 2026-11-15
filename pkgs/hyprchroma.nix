@@ -36,6 +36,11 @@ stdenvNoCC.mkDerivation {
   passthru.pythonRuntime = pythonRuntime;
 
   nativeBuildInputs = [ bash ];
+  # patchShebangs resolves our renderers' `#!/usr/bin/env python3` from these; newer nixpkgs fails the build otherwise.
+  buildInputs = [
+    bash
+    pythonRuntime
+  ];
 
   checkPhase = ''
     runHook preCheck
