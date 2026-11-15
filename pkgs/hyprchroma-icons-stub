@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -u
+
+case ${1:-} in
+  status|revert) exit 0 ;;
+  *) printf '%s\n' 'Icons is not available on NixOS (#66)' >&2; exit 1 ;;
+esac
