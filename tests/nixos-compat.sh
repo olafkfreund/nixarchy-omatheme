@@ -61,5 +61,6 @@ for app in thunderbird pear; do
   done
 done
 
-# e. Thunderbird skips the fast path like browsers.
-grep -qF '$target != browsers && $target != thunderbird' "$bin"
+# e. A recorded off browsers/thunderbird exits early: running their revert at every
+# service start marked a theme change and listed every window as stale.
+grep -qF 'elif [[ $target != dark-reader && $target != qt-kde ]]; then' "$bin"

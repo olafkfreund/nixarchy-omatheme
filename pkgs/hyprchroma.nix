@@ -152,7 +152,7 @@ stdenvNoCC.mkDerivation {
         + '      [[ $status_key == pear ]] && status_key=pearDesktop\n'
         + '      if [[ $set_enabled == true ]]; then\n'
         + '        jq -e --arg key "$status_key" \'.[$key] != null\' "$STATUS_FILE" >/dev/null 2>&1 && exit 0\n'
-        + '      elif [[ $target != dark-reader && $target != qt-kde && $target != browsers && $target != thunderbird ]]; then\n'
+        + '      elif [[ $target != dark-reader && $target != qt-kde ]]; then\n'
         + '        exit 0\n'
         + '      fi\n'
         + '    fi\n'
