@@ -50,6 +50,10 @@ let
       name = "browsers";
       enabled = cfg.targets.browsers;
     }
+    {
+      name = "thunderbird";
+      enabled = cfg.targets.thunderbird;
+    }
   ];
   targetCommands = map (
     target:
@@ -180,6 +184,12 @@ in
         description = "Synchronize supported browser profiles at next launch.";
       };
 
+      thunderbird = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Synchronize Thunderbird profiles at runtime.";
+      };
+
       kitty = lib.mkOption {
         type = lib.types.bool;
         default = true;
@@ -261,7 +271,9 @@ in
         pkgs.coreutils
         pkgs.gnugrep
         pkgs.gnused
-      ];
+      ]
+      ++ lib.optional cfg.targets.gtk pkgs.adw-gtk3
+      ++ lib.optional cfg.targets.qtKde pkgs.kdePackages.breeze-icons;
 
       xdg.dataFile = lib.mkIf cfg.targets.neovim {
         "nvim/site/plugin/nixarchy-theme.lua".source =
@@ -493,6 +505,10 @@ in
           Restart = "always";
           RestartSec = 2;
           RestartPreventExitStatus = 78;
+          MemoryHigh = "1G";
+          MemoryMax = "1536M";
+          TasksMax = 128;
+          CPUWeight = 1000;
           NoNewPrivileges = true;
           PrivateTmp = true;
           PrivateDevices = true;
