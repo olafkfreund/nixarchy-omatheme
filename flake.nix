@@ -89,6 +89,8 @@
             {
               programs.nixarchyThemeEngine.targets = {
                 gtk = false;
+                qtKde = false;
+                thunderbird = false;
                 flatpak = true;
                 browsers = true;
               };
@@ -134,6 +136,11 @@
                 { programs.nixarchyThemeEngine.stylix.mode = "stylix"; }
               ]).config.system.build.toplevel.drvPath
             )).success;
+          hasPackage =
+            system: package:
+            builtins.any (
+              p: (p.name or "") == package.name
+            ) system.config.home-manager.users.test.home.packages;
           serviceFor =
             testSystem: testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
           pluginUnit =
@@ -198,7 +205,7 @@
               }
               ''
                 ${self.packages.${system}.default}/bin/hyprchroma --help |
-                  ${pkgs.gnugrep}/bin/grep -F -- '--target=gtk|qt-kde|dark-reader|pear|flatpak|browsers'
+                  ${pkgs.gnugrep}/bin/grep -F -- '[--target=gtk|qt-kde|dark-reader|pear|flatpak|browsers|thunderbird|icons]'
                 touch $out
               '';
           electronRuntimeTest =
@@ -233,6 +240,21 @@
                   ${pkgs.bash}/bin/bash ${./tests/desktop-runtime.sh}
                 touch $out
               '';
+          nixosCompatTest =
+            pkgs.runCommand "nixarchy-omatheme-nixos-compat"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnugrep
+                  pkgs.python3
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  ${pkgs.bash}/bin/bash ${./tests/nixos-compat.sh}
+                touch $out
+              '';
           paletteActionsTest =
             pkgs.runCommand "nixarchy-omatheme-palette-actions"
               {
@@ -247,7 +269,7 @@
                 touch $out
               '';
           packageDependenciesTest = pkgs.runCommand "nixarchy-omatheme-package-dependencies" { } ''
-            ${self.packages.${system}.default.pythonRuntime}/bin/python3 -c 'import plyvel'
+            ${self.packages.${system}.default.pythonRuntime}/bin/python3 -I -c 'import plyvel'
             touch $out
           '';
         in
@@ -260,6 +282,7 @@
           runtime = runtimeTargetsTest;
           editors = editorRuntimeTest;
           cli-compatibility = cliCompatibilityTest;
+          nixos-compat = nixosCompatTest;
           plugin-enable = pluginEnableTest;
           module =
             builtins.deepSeq
@@ -380,6 +403,28 @@
                 assert builtins.any (
                   command: builtins.match ".*--target=browsers --set-enabled=true --quiet" command != null
                 ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: builtins.match ".*--target=thunderbird --set-enabled=false --quiet" command != null
+                ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert builtins.any (
+                  command: builtins.match ".*--target=thunderbird --set-enabled=true --quiet" command != null
+                ) (serviceFor noStylixSystem).Service.ExecStartPre;
+                assert
+                  !builtins.any (
+                    command: builtins.match ".*--target=icons.*" command != null
+                  ) (serviceFor noStylixSystem).Service.ExecStartPre;
+                assert
+                  !builtins.any (
+                    command: builtins.match ".*--target=icons.*" command != null
+                  ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert (serviceFor noStylixSystem).Service.MemoryHigh == "1G";
+                assert (serviceFor noStylixSystem).Service.MemoryMax == "1536M";
+                assert (serviceFor noStylixSystem).Service.TasksMax == 128;
+                assert (serviceFor noStylixSystem).Service.CPUWeight == 1000;
+                assert hasPackage noStylixSystem pkgs.adw-gtk3;
+                assert !hasPackage targetSystem pkgs.adw-gtk3;
+                assert hasPackage noStylixSystem pkgs.kdePackages.breeze-icons;
+                assert !hasPackage targetSystem pkgs.kdePackages.breeze-icons;
                 assert builtins.any (
                   command: command == "${self.packages.${system}.default}/bin/hyprchroma electron status"
                 ) (serviceFor noStylixSystem).Service.ExecStartPre;
