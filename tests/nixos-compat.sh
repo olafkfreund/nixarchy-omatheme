@@ -26,6 +26,11 @@ check(load("hyprchroma-state")["window_executable"], [
     ("/nix/store/x/bin/.kitty-wrapped (deleted)", "kitty"),
     ("/nix/store/x/bin/foot", "foot"),
 ])
+# running_executables feeds the stale-app exclusion of re-themed terminals.
+state = load("hyprchroma-state")
+os.readlink = lambda path: "/nix/store/x/bin/.kitty-wrapped (deleted)"
+names = state["running_executables"]()
+assert "kitty" in names and ".kitty-wrapped" not in names, f"running_executables: {sorted(names)[:5]}"
 check(load("hyprchroma-dark-reader")["running_executable"], [
     ("/nix/store/x/bin/.chromium-wrapped", "chromium"),
     ("/nix/store/x/bin/.chromium-wrapped (deleted)", "chromium"),
@@ -64,3 +69,6 @@ done
 # e. A recorded off browsers/thunderbird exits early: running their revert at every
 # service start marked a theme change and listed every window as stale.
 grep -qF 'elif [[ $target != dark-reader && $target != qt-kde ]]; then' "$bin"
+
+# f. Icons stays off even when settings record it on (an earlier Arch install).
+grep -qF '[[ $key == icons ]] && return 1' "$bin"

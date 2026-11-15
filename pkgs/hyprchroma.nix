@@ -192,14 +192,6 @@ stdenvNoCC.mkDerivation {
         '        name = os.path.basename(os.readlink(f"/proc/{pid}/exe")).removesuffix(" (deleted)")\n'
         '        wrapped = re.fullmatch(r"\\.(.+)-wrapped", name)\n'
         '        return wrapped.group(1) if wrapped else name', 1)
-    old = '        if not binary or running_binary(pid) != os.path.realpath(binary):\n'
-    assert old in text, "idle GTK portal binary comparison was not found"
-    text = text.replace(old,
-        '        if not binary:\n'
-        '            continue\n'
-        '        binary = os.path.realpath(binary)\n'
-        '        wrapped = os.path.join(os.path.dirname(binary), f".{os.path.basename(binary)}-wrapped")\n'
-        '        if running_binary(pid) not in (binary, wrapped):\n', 1)
     path.write_text(text)
 
     path = Path("lib/hyprchroma-dark-reader")

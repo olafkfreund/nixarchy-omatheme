@@ -98,7 +98,8 @@ Not packaged:
 
 - **Icons:** unavailable on NixOS, tracked in
   [#66](https://github.com/olafkfreund/nixarchy-omatheme/issues/66).
-  `hyprchroma icons` reports this and exits.
+  The Icons framework stays off even if old settings turn it on, and the
+  panel does not show it.
 - **Arch setup installer and uninstaller:** the NixOS module replaces them.
 
 ## First release
