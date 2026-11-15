@@ -22,11 +22,12 @@ declarative owner of any target.
 | Foot | Stylix or Omarchy wrapper | Hyprchroma runtime file | New clients use updated file | Restart existing clients |
 | Ghostty | Stylix or Omarchy wrapper | Hyprchroma runtime file | User-service reload when available | Restart terminal |
 | GTK 3/4 | Stylix wrapper or runtime engine | Runtime GTK CSS | Engine sync | Restart app |
-| libadwaita | Runtime engine | Runtime GTK CSS/settings | Engine sync | Restart app |
+| libadwaita (GTK4) | Runtime engine | Runtime GTK CSS/settings | Engine sync, live without a restart | Restart app |
 | Qt/KDE | Stylix wrapper or runtime engine | Runtime KDE files | Engine sync | Restart app |
 | GNOME settings | Stylix static defaults | Runtime gsettings | Engine sync | Re-login |
 | Dark Reader | Browser policy/extension | Browser extension storage | Engine sync | Browser restart |
 | Additional browsers | Browser profiles | Omarchroma browser target | Deferred database sync | Browser exit / next launch |
+| Thunderbird | Thunderbird profiles | Omarchroma Thunderbird target | Engine sync (`targets.thunderbird`, on by default) | Restart Thunderbird |
 | VS Code | User settings JSON | Hyprchroma color customizations | Theme hook/settings reload | Reload window |
 | Neovim | User config / Home Manager | Hyprchroma runtime `neovim-theme.lua` | In-editor watcher re-applies the theme's colorscheme, or `omarchy` | `:OmarchyThemeReload` / restart |
 | Vim | User config / Home Manager | Hyprchroma runtime `vim-theme.vim` | In-editor watcher (needs `+timers`) applies `omarchy` | `:OmarchyThemeReload` / restart |
@@ -37,12 +38,18 @@ declarative owner of any target.
 | Flatpak apps | Declarative permissions | Runtime GTK/KDE files | Opt-in sync | App restart |
 | GRUB/Plymouth/initrd | Stylix/NixOS | Stylix palette | Rebuild/reboot | Rebuild |
 | Fonts/cursors/icons | Stylix/NixOS | Stylix packages | Rebuild | Rebuild |
+| Omarchroma Icons | Not packaged ([#66](https://github.com/olafkfreund/nixarchy-omatheme/issues/66)) | None | `hyprchroma icons` reports it is unavailable | No changes |
 | Unsupported app | Nix wrapper if safe | Target-specific | Report stale | Rebuild/manual |
 
 The engine packages the Python `plyvel` dependency needed by Omarchroma's
-browser database integration. GTK, libadwaita, and Qt theme assets remain
-host-level concerns and are only required when the corresponding desktop
-target consumes them.
+browser database integration. The GTK target installs `adw-gtk3` and the
+Qt/KDE target installs Breeze icons. Other GTK and Qt theme assets remain
+host-level concerns.
+
+The theme hook hands the sync to the `hyprchromad` service and returns at once.
+Apps that need a restart appear in a stale-app list with a Dismiss button.
+`restartMode` stays at upstream's default, `off`. The Arch setup installer and
+uninstaller are not packaged; the NixOS module replaces them.
 
 ## `v0.1.0` verification
 

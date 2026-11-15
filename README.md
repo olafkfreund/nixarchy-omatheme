@@ -79,6 +79,28 @@ omarchy theme set nord
 The theme command is runtime-only. It does not require a rebuild or a second
 declarative theme definition.
 
+## Omarchroma 4.1.0
+
+The package tracks Omarchroma 4.1.0. What it changes on NixOS:
+
+- **Thunderbird:** a new runtime target. Set `programs.nixarchyThemeEngine.targets.thunderbird`
+  to `false` to turn it off. It is on by default.
+- **GTK4/libadwaita:** apps restyle live, without a restart.
+- **Theme packages:** the GTK target installs `adw-gtk3`. The Qt/KDE target
+  installs Breeze icons.
+- **Theme hook:** it hands the sync to the `hyprchromad` service and returns
+  at once. The terminal, shell, and editor renderers run inside that sync.
+- **Stale apps:** Omarchroma lists apps that need a restart, with a Dismiss
+  button. `restartMode` stays at upstream's default, `off`.
+- **Service limits:** `hyprchromad` runs with memory, task, and CPU weight limits.
+
+Not packaged:
+
+- **Icons:** unavailable on NixOS, tracked in
+  [#66](https://github.com/olafkfreund/nixarchy-omatheme/issues/66).
+  `hyprchroma icons` reports this and exits.
+- **Arch setup installer and uninstaller:** the NixOS module replaces them.
+
 ## First release
 
 `v0.1.0` is the first versioned release. Pin it in production flakes for a
