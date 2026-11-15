@@ -117,9 +117,10 @@ palette = 15=$(without_hash "${PALETTE[bright_foreground]}")
 EOF
 }
 
+# kitty rereads its config, which includes runtime/kitty.conf, on SIGUSR1. kitten has
+# no --to socket here, and nixpkgs runs kitty as .kitty-wrapped (#58).
 reload_kitty() {
-  if command -v kitten >/dev/null 2>&1 && \
-    kitten @ set-colors --all --configured "$RUNTIME_DIR/kitty.conf" >/dev/null 2>&1; then
+  if command -v pkill >/dev/null 2>&1 && pkill -USR1 -x '[.]?kitty(-wrapped)?'; then
     kitty_status="synchronized"
   fi
 }
