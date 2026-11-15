@@ -3,6 +3,7 @@
   stdenvNoCC,
   bash,
   coreutils,
+  procps,
   util-linux,
   gawk,
   glib,
@@ -20,8 +21,8 @@
 let
   pythonRuntime = python3.withPackages (_: [ python3Packages.plyvel ]);
   outPath = builtins.placeholder "out";
-  trustedBins = "${coreutils}/bin ${util-linux}/bin ${gawk}/bin ${glib}/bin ${jq}/bin ${pythonRuntime}/bin /run/current-system/sw/bin";
-  trustedPath = "${coreutils}/bin:${util-linux}/bin:${gawk}/bin:${glib}/bin:${jq}/bin:${pythonRuntime}/bin:/run/current-system/sw/bin";
+  trustedBins = "${coreutils}/bin ${procps}/bin ${util-linux}/bin ${gawk}/bin ${glib}/bin ${jq}/bin ${pythonRuntime}/bin /run/current-system/sw/bin";
+  trustedPath = "${coreutils}/bin:${procps}/bin:${util-linux}/bin:${gawk}/bin:${glib}/bin:${jq}/bin:${pythonRuntime}/bin:/run/current-system/sw/bin";
   dataDirs = "/etc/profiles/per-user/\${USER:-}/share:$HOME/.nix-profile/share:/run/current-system/sw/share";
 in
 stdenvNoCC.mkDerivation {
@@ -66,7 +67,7 @@ stdenvNoCC.mkDerivation {
         --replace-quiet 'for directory in /usr/bin /usr/share/omarchy/bin; do' \
           'for directory in ${trustedBins}; do' \
         --replace-quiet '"/usr/bin", "/usr/share/omarchy/bin"' \
-          '"${coreutils}/bin", "${util-linux}/bin", "${gawk}/bin", "${glib}/bin", "${jq}/bin", "${pythonRuntime}/bin", "/run/current-system/sw/bin"' \
+          '"${coreutils}/bin", "${procps}/bin", "${util-linux}/bin", "${gawk}/bin", "${glib}/bin", "${jq}/bin", "${pythonRuntime}/bin", "/run/current-system/sw/bin"' \
         --replace-quiet '"/usr/bin:/usr/share/omarchy/bin"' \
           '"${trustedPath}"' \
         --replace-quiet '"''${trusted:-/usr/bin:/usr/share/omarchy/bin}"' \
