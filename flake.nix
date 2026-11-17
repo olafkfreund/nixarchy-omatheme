@@ -170,6 +170,26 @@
             builtins.any (
               p: (p.name or "") == package.name
             ) system.config.home-manager.users.test.home.packages;
+          iconsSystem = makeTestSystem [ { programs.nixarchyThemeEngine.icons.enable = true; } ];
+          iconsPackage = self.packages.${system}.hyprchroma-icons;
+          pluginWithIcons = pkgs.callPackage ./pkgs/omarchroma-plugin.nix {
+            src = omarchroma;
+            engine = iconsPackage;
+          };
+          pluginOf = testSystem: testSystem.config.programs.nixarchyThemeEngine.pluginPackage.drvPath;
+          revertIcons = "-${
+            self.packages.${system}.default
+          }/bin/hyprchroma --target=icons --set-enabled=false --quiet --force";
+          iconsCommands =
+            testSystem:
+            builtins.filter (
+              command: builtins.match ".*--target=icons.*" command != null
+            ) (serviceFor testSystem).Service.ExecStartPre;
+          hasPackageMatching =
+            testSystem: pattern:
+            builtins.any (
+              p: builtins.match pattern (p.name or "") != null
+            ) testSystem.config.home-manager.users.test.home.packages;
           serviceFor =
             testSystem: testSystem.config.home-manager.users.test.systemd.user.services.hyprchromad;
           pluginUnit =
@@ -319,6 +339,46 @@
                   TMPDIR=$TMPDIR ${pkgs.bash}/bin/bash ${./tests/palette-actions.sh}
                 touch $out
               '';
+          iconsUpstreamTest =
+            pkgs.runCommand "nixarchy-omatheme-icons-upstream"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnused
+                  pkgs.gnugrep
+                  pkgs.gawk
+                  pkgs.glib
+                  pkgs.jq
+                  pkgs.librsvg
+                  iconsPackage.pythonRuntime
+                ];
+              }
+              ''
+                HYPRCHROMA_PACKAGE=${iconsPackage} \
+                  PLUGIN_PANEL=${self.packages.${system}.omarchroma-plugin}/Panel.qml \
+                  UPSTREAM_TESTS=${omarchroma}/tests \
+                  PYTHON_ENV=${iconsPackage.pythonRuntime} \
+                  ${pkgs.bash}/bin/bash ${./tests/icons-upstream.sh}
+                touch $out
+              '';
+          iconsNixosTest =
+            pkgs.runCommand "nixarchy-omatheme-icons-nixos"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnused
+                  pkgs.librsvg
+                ];
+              }
+              ''
+                HYPRCHROMA_ICONS_PACKAGE=${iconsPackage} \
+                  HYPRCHROMA_PACKAGE=${self.packages.${system}.default} \
+                  PYTHON_ENV=${iconsPackage.pythonRuntime} \
+                  ${pkgs.bash}/bin/bash ${./tests/icons-nixos.sh}
+                touch $out
+              '';
           packageDependenciesTest = pkgs.runCommand "nixarchy-omatheme-package-dependencies" { } ''
             ${self.packages.${system}.default.pythonRuntime}/bin/python3 -I -c 'import plyvel'
             touch $out
@@ -336,6 +396,8 @@
           cli-compatibility = cliCompatibilityTest;
           nixos-compat = nixosCompatTest;
           plugin-enable = pluginEnableTest;
+          icons-upstream = iconsUpstreamTest;
+          icons-nixos = iconsNixosTest;
           module =
             builtins.deepSeq
               {
@@ -462,14 +524,15 @@
                 assert builtins.any (
                   command: builtins.match ".*--target=thunderbird --set-enabled=true --quiet" command != null
                 ) (serviceFor noStylixSystem).Service.ExecStartPre;
-                assert
-                  !builtins.any (
-                    command: builtins.match ".*--target=icons.*" command != null
-                  ) (serviceFor noStylixSystem).Service.ExecStartPre;
-                assert
-                  !builtins.any (
-                    command: builtins.match ".*--target=icons.*" command != null
-                  ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert iconsCommands noStylixSystem == [ revertIcons ];
+                assert iconsCommands targetSystem == [ revertIcons ];
+                assert iconsCommands iconsSystem == [ ];
+                assert !hasPackageMatching noStylixSystem "(reversal|yaru).*";
+                assert hasPackageMatching iconsSystem "reversal-icon-theme.*";
+                assert hasPackageMatching iconsSystem "yaru-.*";
+                assert pluginOf noStylixSystem == self.packages.${system}.omarchroma-plugin.drvPath;
+                assert pluginOf iconsSystem == pluginWithIcons.drvPath;
+                assert pluginOf iconsSystem != pluginOf noStylixSystem;
                 assert (hm noStylixSystem).home.activation.nixarchyThemeEngineShell.before == [ "reloadSystemd" ];
                 assert !(builtins.hasAttr "nixarchyThemeEngineShell" (hm shellsOffSystem).home.activation);
                 assert (serviceFor noStylixSystem).Service.MemoryHigh == "1G";
@@ -485,9 +548,22 @@
                 ) (serviceFor noStylixSystem).Service.ExecStartPre;
                 assert requiredModeFails;
                 # Home Manager reports target collisions only when it builds home-files.
-                pkgs.runCommand "nixarchy-omatheme-module-eval" {
-                  neovimHomeFiles = neovimProgramSystem.config.home-manager.users.test.home-files;
-                } "touch $out"
+                pkgs.runCommand "nixarchy-omatheme-module-eval"
+                  {
+                    neovimHomeFiles = neovimProgramSystem.config.home-manager.users.test.home-files;
+                    offClosure = pkgs.closureInfo {
+                      rootPaths = [ noStylixSystem.config.programs.nixarchyThemeEngine.package ];
+                    };
+                    onClosure = pkgs.closureInfo {
+                      rootPaths = [ iconsSystem.config.programs.nixarchyThemeEngine.package ];
+                    };
+                  }
+                  ''
+                    # Pillow is the cost of Icons: only the option brings it in.
+                    ! grep -qi pillow $offClosure/store-paths
+                    grep -qi pillow $onClosure/store-paths
+                    touch $out
+                  ''
               );
         }
       );
