@@ -95,6 +95,8 @@ class Fixture:
             theme = self.share / "icons" / name
             (theme / "apps").symlink_to("../Reversal/apps")
             (theme / "places/scalable/folder-link.svg").symlink_to("../../../Reversal/places/scalable/folder.svg")
+            # The store's Reversal ships links that point nowhere (150 in green).
+            (theme / "places/scalable/folder-gone.svg").symlink_to("../../../Reversal/places/scalable/missing.svg")
             for directory, dirs, files in os.walk(theme):
                 for entry in files:
                     path = os.path.join(directory, entry)
@@ -139,6 +141,8 @@ chk("...and is writable throughout",
     sorted({os.access(p, os.W_OK) for p, _ in walked} | {os.access(sage, os.W_OK)}), [True])
 chk("the artwork reached through the link is a real file there",
     (sage / "places/scalable/folder-link.svg").is_file() and not (sage / "places/scalable/folder-link.svg").is_symlink(), True)
+chk("a link that points nowhere is left out, not a failure",
+    os.path.lexists(sage / "places/scalable/folder-gone.svg"), False)
 folder = (sage / "places/scalable/folder.svg").read_text().lower()
 chk("the folder is recoloured to sage", ("#627867" in folder, "#14b478" in folder), (True, False))
 chk("the marker is present", (sage / ".omarchroma-generated").is_file(), True)
