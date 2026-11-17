@@ -12,7 +12,7 @@ let
   };
   defaultPluginPackage = pkgs.callPackage ../pkgs/omarchroma-plugin.nix {
     src = themeEngineSrc;
-    engine = enginePackage;
+    engine = cfg.package;
   };
   cfg = config.programs.nixarchyThemeEngine;
   stylixModuleImported = options ? stylix;
@@ -110,9 +110,12 @@ in
       description = "User whose Omarchy graphical session owns the theme engine.";
     };
 
+    icons.enable = lib.mkEnableOption "icon recoloring (installs the Reversal and Yaru icon themes and builds the engine with its image helpers)";
+
     package = lib.mkOption {
       type = lib.types.package;
-      default = enginePackage;
+      default = enginePackage.override { withIcons = cfg.icons.enable; };
+      defaultText = lib.literalExpression "engine package, built withIcons = config.programs.nixarchyThemeEngine.icons.enable";
       description = "Package providing the hyprchroma runtime engine.";
     };
 
@@ -273,7 +276,11 @@ in
         pkgs.gnused
       ]
       ++ lib.optional cfg.targets.gtk pkgs.adw-gtk3
-      ++ lib.optional cfg.targets.qtKde pkgs.kdePackages.breeze-icons;
+      ++ lib.optional cfg.targets.qtKde pkgs.kdePackages.breeze-icons
+      ++ lib.optionals cfg.icons.enable [
+        (pkgs.reversal-icon-theme.override { colorVariants = [ "all" ]; })
+        pkgs.yaru-theme
+      ];
 
       xdg.dataFile = lib.mkIf cfg.targets.neovim {
         "nvim/site/plugin/nixarchy-theme.lua".source =
@@ -517,7 +524,10 @@ in
             ++ lib.optional shellTargetsEnabled "${cfg.package}/bin/hyprchroma shell"
             ++ lib.optional editorTargetsEnabled "${cfg.package}/bin/hyprchroma editors"
             ++ [ "${cfg.package}/bin/hyprchroma electron status" ]
-            ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode";
+            ++ lib.optional cfg.electron.apps.vscode.enable "${cfg.package}/lib/hyprchroma/hyprchroma-electron vscode"
+            ++ lib.optional (
+              !cfg.icons.enable
+            ) "-${cfg.package}/bin/hyprchroma --target=icons --set-enabled=false --quiet --force";
           Environment = [ "NIXARCHY_THEME_ENGINE_MODE=${resolvedThemeMode}" ];
           Restart = "always";
           RestartSec = 2;
