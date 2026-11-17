@@ -114,8 +114,7 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = enginePackage.override { withIcons = cfg.icons.enable; };
-      defaultText = lib.literalExpression "engine package, built withIcons = config.programs.nixarchyThemeEngine.icons.enable";
+      default = enginePackage;
       description = "Package providing the hyprchroma runtime engine.";
     };
 
@@ -261,6 +260,13 @@ in
   # Keep the NixOS option surface importable on its own; Nixarchy evaluates its
   # system module independently before a host adds Home Manager.
   config = lib.mkIf (cfg.enable && options ? home-manager) {
+    # A host module (nixarchy) sets `package` with mkDefault, which outranks an
+    # option default, so withIcons is set here one step above it. A user's own
+    # `package` still wins. Why: plan/2026-11-17-66-icons.md, deviation D4.
+    programs.nixarchyThemeEngine.package = lib.mkIf cfg.icons.enable (
+      lib.mkOverride 999 (enginePackage.override { withIcons = true; })
+    );
+
     assertions = [
       {
         assertion = cfg.stylix.mode != "stylix" || stylixModuleImported;
