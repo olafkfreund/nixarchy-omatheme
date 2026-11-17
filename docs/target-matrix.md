@@ -37,8 +37,8 @@ declarative owner of any target.
 | Other Electron apps | App-specific wrapper/config | App-specific renderer | Unsupported until verified | App restart |
 | Flatpak apps | Declarative permissions | Runtime GTK/KDE files | Opt-in sync | App restart |
 | GRUB/Plymouth/initrd | Stylix/NixOS | Stylix palette | Rebuild/reboot | Rebuild |
-| Fonts/cursors/icons | Stylix/NixOS | Stylix packages | Rebuild | Rebuild |
-| Omarchroma Icons | Not packaged ([#66](https://github.com/olafkfreund/nixarchy-omatheme/issues/66)) | None | `hyprchroma icons` reports it is unavailable | No changes |
+| Fonts/cursors/icons | Stylix/NixOS | Stylix packages (the runtime icon theme is Omarchroma Icons, below) | Rebuild | Rebuild |
+| Omarchroma Icons | `programs.nixarchyThemeEngine.icons.enable` (opt in) | Generated `Omarchroma-Icons` theme over Reversal or Yaru | Engine sync, switched on in the panel; revert at the next service start when the option is removed | No changes |
 | Unsupported app | Nix wrapper if safe | Target-specific | Report stale | Rebuild/manual |
 
 The engine packages the Python `plyvel` dependency needed by Omarchroma's
