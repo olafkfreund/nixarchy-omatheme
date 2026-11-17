@@ -160,4 +160,61 @@ second=$(sha256sum \
   "$config/omarchy/runtime/kitty.conf" | sha256sum)
 test "$first" != "$second"
 
+# The renderer finds starship without it on PATH (#60).
+runtime="$config/omarchy/runtime"
+render_shell() {
+  HYPRCHROMA_FIXTURE="$tmp/palette.one" \
+    XDG_CONFIG_HOME="$config" \
+    XDG_STATE_HOME="$state" \
+    HOME="$home" \
+    PATH="${1:-$bin:$PATH}" \
+    "$lib/hyprchroma-shell"
+}
+status_is() { grep -Fq "\"starship\": \"$1\"" "$state/hyprchroma/shell.json"; }
+rm "$bin/starship"
+mkdir -p "$home/.nix-profile/bin" "$tmp/cwd"
+
+rm -f "$runtime/starship.toml"
+render_shell
+status_is unavailable
+test ! -e "$runtime/starship.toml"
+
+printf '#!%s\nexit 0\n' "$bash_bin" > "$home/.nix-profile/bin/starship"
+chmod 755 "$home/.nix-profile/bin/starship"
+rm -f "$runtime/starship.toml"
+render_shell
+status_is prompt-refresh
+test -f "$runtime/starship.toml"
+
+printf 'format = "$time"\n' > "$runtime/starship.base.toml"
+render_shell
+grep -Fq 'format = "$time"' "$runtime/starship.toml"
+
+rm -f "$runtime/starship.toml" "$runtime/starship.base.toml"
+render_shell
+status_is prompt-refresh
+grep -Fq 'format = "$character"' "$runtime/starship.toml"
+
+rm -f "$runtime/starship.toml"
+ln -s "$config/missing.toml" "$config/starship.toml"
+render_shell
+status_is prompt-refresh
+grep -Fq 'format = "$character"' "$runtime/starship.toml"
+
+rm -f "$runtime/starship.toml" "$config/starship.toml"
+printf 'format = "$directory"\n' > "$tmp/live.toml"
+ln -s "$tmp/live.toml" "$config/starship.toml"
+render_shell
+status_is unavailable
+test ! -e "$runtime/starship.toml"
+rm -f "$config/starship.toml"
+
+# An empty PATH entry is the working directory; it must not count.
+rm -f "$home/.nix-profile/bin/starship" "$runtime/starship.toml"
+printf '#!%s\nexit 0\n' "$bash_bin" > "$tmp/cwd/starship"
+chmod 755 "$tmp/cwd/starship"
+(cd "$tmp/cwd" && render_shell ":$bin:$PATH")
+status_is unavailable
+test ! -e "$runtime/starship.toml"
+
 echo "runtime target test passed"

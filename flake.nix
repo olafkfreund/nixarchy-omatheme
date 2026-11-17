@@ -74,6 +74,34 @@
               modules = baseTestModules ++ extraModules;
             };
           noStylixSystem = makeTestSystem [ ];
+          stubPackage = pkgs.runCommand "hyprchroma-stub" { } ''
+            mkdir -p $out/bin $out/lib/hyprchroma
+            cat > $out/lib/hyprchroma/hyprchroma-palette <<'EOF'
+            #!${pkgs.bash}/bin/bash
+            echo palette >> "$STUB_LOG"
+            exit "''${STUB_PALETTE_RC:-0}"
+            EOF
+            cat > $out/bin/hyprchroma <<'EOF'
+            #!${pkgs.bash}/bin/bash
+            if [ -f "$STUB_BASE" ]; then base=present; else base=absent; fi
+            echo "hyprchroma $* base=$base" >> "$STUB_LOG"
+            exit "''${STUB_RENDER_RC:-0}"
+            EOF
+            chmod 755 $out/bin/hyprchroma $out/lib/hyprchroma/hyprchroma-palette
+          '';
+          stubSystem = makeTestSystem [ { programs.nixarchyThemeEngine.package = stubPackage; } ];
+          starshipOffSystem = makeTestSystem [ { programs.nixarchyThemeEngine.targets.starship = false; } ];
+          shellsOffSystem = makeTestSystem [
+            {
+              programs.nixarchyThemeEngine.targets = {
+                starship = false;
+                bash = false;
+                zsh = false;
+                fish = false;
+              };
+            }
+          ];
+          hm = testSystem: testSystem.config.home-manager.users.test;
           stylixSystem = makeTestSystem [ stylixProbeModule ];
           runtimeSystem = makeTestSystem [
             stylixProbeModule
@@ -178,6 +206,28 @@
                   ${pkgs.bash}/bin/bash ${./tests/runtime-targets.sh}
                 touch $out
               '';
+          shellActivationTest =
+            pkgs.runCommand "nixarchy-omatheme-shell-activation"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.fish
+                  pkgs.gnugrep
+                  pkgs.zsh
+                ];
+              }
+              ''
+                SHELL_ACTIVATION=${pkgs.writeText "shell-activation" (hm stubSystem).home.activation.nixarchyThemeEngineShell.data} \
+                BASH_HOOK_OFF=${pkgs.writeText "bash-hook-off" (hm starshipOffSystem).programs.bash.bashrcExtra} \
+                BASH_HOOK_ON=${pkgs.writeText "bash-hook-on" (hm noStylixSystem).programs.bash.bashrcExtra} \
+                ZSH_HOOK_OFF=${pkgs.writeText "zsh-hook-off" (hm starshipOffSystem).programs.zsh.initContent} \
+                ZSH_HOOK_ON=${pkgs.writeText "zsh-hook-on" (hm noStylixSystem).programs.zsh.initContent} \
+                FISH_HOOK_OFF=${pkgs.writeText "fish-hook-off" (hm starshipOffSystem).programs.fish.interactiveShellInit} \
+                FISH_HOOK_ON=${pkgs.writeText "fish-hook-on" (hm noStylixSystem).programs.fish.interactiveShellInit} \
+                  ${pkgs.bash}/bin/bash ${./tests/shell-activation.sh}
+                touch $out
+              '';
           editorRuntimeTest =
             pkgs.runCommand "nixarchy-omatheme-editor-runtime"
               {
@@ -280,6 +330,7 @@
           desktop = desktopRuntimeTest;
           electron = electronRuntimeTest;
           runtime = runtimeTargetsTest;
+          shell-activation = shellActivationTest;
           editors = editorRuntimeTest;
           cli-compatibility = cliCompatibilityTest;
           nixos-compat = nixosCompatTest;
@@ -311,6 +362,7 @@
                   noStylixSystem.config.home-manager.users.test.home.activation.nixarchyThemeEngineAlacritty;
                 themeHook =
                   noStylixSystem.config.home-manager.users.test.home.file.".config/omarchy/hooks/theme-set.d/hyprchroma";
+                shellActivation = (hm noStylixSystem).home.activation.nixarchyThemeEngineShell;
                 inherit requiredModeFails;
               }
               (
@@ -417,6 +469,8 @@
                   !builtins.any (
                     command: builtins.match ".*--target=icons.*" command != null
                   ) (serviceFor targetSystem).Service.ExecStartPre;
+                assert (hm noStylixSystem).home.activation.nixarchyThemeEngineShell.before == [ "reloadSystemd" ];
+                assert !(builtins.hasAttr "nixarchyThemeEngineShell" (hm shellsOffSystem).home.activation);
                 assert (serviceFor noStylixSystem).Service.MemoryHigh == "1G";
                 assert (serviceFor noStylixSystem).Service.MemoryMax == "1536M";
                 assert (serviceFor noStylixSystem).Service.TasksMax == 128;

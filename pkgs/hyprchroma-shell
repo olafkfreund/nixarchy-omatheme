@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import pwd
 import re
 import shutil
 import subprocess
@@ -20,6 +21,7 @@ SHELL_THEME = RUNTIME_DIR / "shell-theme.sh"
 FISH_THEME = RUNTIME_DIR / "shell-theme.fish"
 STATUS_FILE = STATE_HOME / "hyprchroma/shell.json"
 HEX = re.compile(r"^#?[0-9A-Fa-f]{6,8}$")
+DEFAULT = 'format = "$character"\n'
 BEGIN = "# hyprchroma: palette begin"
 END = "# hyprchroma: palette end"
 
@@ -58,14 +60,24 @@ def starship_base() -> str | None:
         return STARSHIP_BASE.read_text(encoding="utf-8")
     source = CONFIG_HOME / "starship.toml"
     if source.is_symlink():
-        return None
+        return None if source.exists() else DEFAULT
     if source.exists():
         return source.read_text(encoding="utf-8")
-    return "format = \"$character\"\n"
+    return DEFAULT
+
+
+def starship_installed() -> bool:
+    paths = os.environ.get("PATH", "").split(os.pathsep)
+    try:
+        paths.append(f"/etc/profiles/per-user/{pwd.getpwuid(os.getuid()).pw_name}/bin")
+    except KeyError:
+        pass
+    paths.append(str(Path.home() / ".nix-profile/bin"))
+    return shutil.which("starship", path=os.pathsep.join(p for p in paths if p)) is not None
 
 
 def render_starship(colors: dict[str, str]) -> str | None:
-    if shutil.which("starship") is None:
+    if not starship_installed():
         return None
     base = starship_base()
     if base is None:

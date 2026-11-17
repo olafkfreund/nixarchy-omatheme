@@ -15,7 +15,7 @@ declarative owner of any target.
 | Target | Structure owner | Runtime color owner | Runtime action | Fallback |
 | --- | --- | --- | --- | --- |
 | Omarchy shell/Hyprland | Omarchy | Omarchy | Native theme hook | None |
-| Starship | Stylix or Home Manager | Hyprchroma runtime `starship.toml` | Prompt reads runtime config | None |
+| Starship | Stylix or Home Manager | Hyprchroma runtime `starship.toml` | Re-rendered at every switch; prompt reads runtime config. `targets.starship = false` leaves the shell's own config | None |
 | Bash/Zsh/Fish | Home Manager shell config | Hyprchroma runtime exports | Prompt hook reloads colors | None |
 | Alacritty | Home Manager/Stylix | Existing generated config or user-owned import | Bridge copies generated symlink to a regular file; external hook owns reload | Restart terminal / no Hyprchroma renderer |
 | Kitty | Stylix or Omarchy wrapper | Hyprchroma runtime file | Remote color update when available | Reload/restart terminal |

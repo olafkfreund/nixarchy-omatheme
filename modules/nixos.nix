@@ -211,7 +211,7 @@ in
       starship = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Synchronize Starship's runtime palette.";
+        description = "Point Starship at the themed runtime config. Needs a shell target (bash, zsh or fish) to load it. When false, shells keep their own STARSHIP_CONFIG.";
       };
 
       bash = lib.mkOption {
@@ -317,7 +317,12 @@ in
             [ -r "$file" ] || return 0
             stamp=$(${pkgs.coreutils}/bin/stat -c %Y -- "$file" 2>/dev/null) || return 0
             if [ "''${HYPRCHROMA_SHELL_STAMP:-}" != "$stamp" ]; then
-              . "$file"
+              ${
+                if cfg.targets.starship then
+                  ''. "$file"''
+                else
+                  "local starship_set=\${STARSHIP_CONFIG+x} starship_saved=\${STARSHIP_CONFIG-}\n    . \"$file\"\n    if [ -n \"$starship_set\" ]; then STARSHIP_CONFIG=$starship_saved; else unset STARSHIP_CONFIG; fi"
+              }
               HYPRCHROMA_SHELL_STAMP="$stamp"
             fi
           }
@@ -336,7 +341,12 @@ in
             [[ -r "$file" ]] || return 0
             stamp=$(${pkgs.coreutils}/bin/stat -c %Y -- "$file" 2>/dev/null) || return 0
             if [[ "''${HYPRCHROMA_SHELL_STAMP:-}" != "$stamp" ]]; then
-              source "$file"
+              ${
+                if cfg.targets.starship then
+                  ''source "$file"''
+                else
+                  "local starship_set=\${STARSHIP_CONFIG+x} starship_saved=\${STARSHIP_CONFIG-}\n    source \"$file\"\n    if [ -n \"$starship_set\" ]; then STARSHIP_CONFIG=$starship_saved; else unset STARSHIP_CONFIG; fi"
+              }
               HYPRCHROMA_SHELL_STAMP="$stamp"
             fi
           }
@@ -351,7 +361,12 @@ in
           function _hyprchroma_shell_refresh --on-event fish_prompt
             set -l file "$HOME/.config/omarchy/runtime/shell-theme.fish"
             test -r "$file"; or return
-            source "$file"
+            ${
+              if cfg.targets.starship then
+                ''source "$file"''
+              else
+                "set -l starship_saved $STARSHIP_CONFIG\n  set -q STARSHIP_CONFIG; and set -l starship_set 1\n  source \"$file\"\n  if set -q starship_set; set -gx STARSHIP_CONFIG $starship_saved; else; set -e STARSHIP_CONFIG; end"
+            }
           end
         ''
       );
@@ -399,21 +414,23 @@ in
         '';
       };
 
-      home.activation.nixarchyThemeEngineShell = {
+      home.activation.nixarchyThemeEngineShell = lib.mkIf shellTargetsEnabled {
         after = [ "linkGeneration" ];
-        before = [ ];
+        before = [ "reloadSystemd" ];
         data = ''
           runtime_dir="$HOME/.config/omarchy/runtime"
           starship_config="$HOME/.config/starship.toml"
           starship_base="$runtime_dir/starship.base.toml"
           run ${pkgs.coreutils}/bin/mkdir -p "$runtime_dir"
-          if [ -L "$starship_config" ]; then
-            generated_config=$(${pkgs.coreutils}/bin/readlink -f -- "$starship_config")
-            if [ -f "$generated_config" ]; then
-              run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$starship_base"
-            fi
-          elif [ -f "$starship_config" ]; then
+          if [ -f "$starship_config" ]; then
             run ${pkgs.coreutils}/bin/install -Dm644 "$starship_config" "$starship_base"
+          else
+            run ${pkgs.coreutils}/bin/rm -f -- "$starship_base"
+          fi
+          if [[ ! -v DRY_RUN ]] \
+            && ${cfg.package}/lib/hyprchroma/hyprchroma-palette --all >/dev/null 2>&1; then
+            ${cfg.package}/bin/hyprchroma shell >/dev/null \
+              || echo "nixarchy-omatheme: prompt render failed; it runs again at the next theme change" >&2
           fi
         '';
       };
