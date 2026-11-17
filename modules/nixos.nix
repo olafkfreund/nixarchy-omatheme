@@ -399,21 +399,23 @@ in
         '';
       };
 
-      home.activation.nixarchyThemeEngineShell = {
+      home.activation.nixarchyThemeEngineShell = lib.mkIf shellTargetsEnabled {
         after = [ "linkGeneration" ];
-        before = [ ];
+        before = [ "reloadSystemd" ];
         data = ''
           runtime_dir="$HOME/.config/omarchy/runtime"
           starship_config="$HOME/.config/starship.toml"
           starship_base="$runtime_dir/starship.base.toml"
           run ${pkgs.coreutils}/bin/mkdir -p "$runtime_dir"
-          if [ -L "$starship_config" ]; then
-            generated_config=$(${pkgs.coreutils}/bin/readlink -f -- "$starship_config")
-            if [ -f "$generated_config" ]; then
-              run ${pkgs.coreutils}/bin/install -Dm644 "$generated_config" "$starship_base"
-            fi
-          elif [ -f "$starship_config" ]; then
+          if [ -f "$starship_config" ]; then
             run ${pkgs.coreutils}/bin/install -Dm644 "$starship_config" "$starship_base"
+          else
+            run ${pkgs.coreutils}/bin/rm -f -- "$starship_base"
+          fi
+          if [[ ! -v DRY_RUN ]] \
+            && ${cfg.package}/lib/hyprchroma/hyprchroma-palette --all >/dev/null 2>&1; then
+            ${cfg.package}/bin/hyprchroma shell >/dev/null \
+              || echo "nixarchy-omatheme: prompt render failed; it runs again at the next theme change" >&2
           fi
         '';
       };
