@@ -8,6 +8,7 @@
   gawk,
   glib,
   jq,
+  librsvg,
   python3,
   python3Packages,
   src,
@@ -16,13 +17,33 @@
   terminalRenderer ? ./hyprchroma-terminals,
   editorRenderer ? ./hyprchroma-editors,
   editorBridges ? ./editors,
+  withIcons ? false,
 }:
 
 let
-  pythonRuntime = python3.withPackages (_: [ python3Packages.plyvel ]);
+  pythonRuntime = python3.withPackages (
+    _:
+    [ python3Packages.plyvel ]
+    ++ lib.optionals withIcons [
+      python3Packages.pillow
+      python3Packages.numpy
+    ]
+  );
   outPath = builtins.placeholder "out";
-  trustedBins = "${coreutils}/bin ${procps}/bin ${util-linux}/bin ${gawk}/bin ${glib}/bin ${jq}/bin ${pythonRuntime}/bin /run/current-system/sw/bin";
-  trustedPath = "${coreutils}/bin:${procps}/bin:${util-linux}/bin:${gawk}/bin:${glib}/bin:${jq}/bin:${pythonRuntime}/bin:/run/current-system/sw/bin";
+  trustedBinDirs = [
+    "${coreutils}/bin"
+    "${procps}/bin"
+    "${util-linux}/bin"
+    "${gawk}/bin"
+    "${glib}/bin"
+    "${jq}/bin"
+    "${pythonRuntime}/bin"
+  ]
+  ++ lib.optional withIcons "${librsvg}/bin"
+  ++ [ "/run/current-system/sw/bin" ];
+  trustedBins = lib.concatStringsSep " " trustedBinDirs;
+  trustedPath = lib.concatStringsSep ":" trustedBinDirs;
+  pathCandidates = lib.concatMapStringsSep ", " (dir: ''"${dir}"'') trustedBinDirs;
   dataDirs = "/etc/profiles/per-user/\${USER:-}/share:$HOME/.nix-profile/share:/run/current-system/sw/share";
 in
 stdenvNoCC.mkDerivation {
@@ -49,14 +70,14 @@ stdenvNoCC.mkDerivation {
     for file in bin/hyprchroma lib/sync-* share/hooks/hyprchroma; do
       bash -n "$file"
     done
-    for file in lib/hyprchroma-state lib/hyprchroma-dark-reader lib/hyprchroma-palette; do
+    for file in lib/hyprchroma-state lib/hyprchroma-dark-reader lib/hyprchroma-palette lib/hyprchroma-icons; do
       ${pythonRuntime}/bin/python3 -m py_compile "$file"
     done
     runHook postCheck
   '';
 
   postPatch = ''
-    rm bin/hyprchroma-setup bin/hyprchroma-uninstall lib/hyprchroma-icons
+    rm bin/hyprchroma-setup bin/hyprchroma-uninstall
     for file in bin/* lib/* share/hooks/hyprchroma; do
       substituteInPlace "$file" \
         --replace-quiet '/usr/bin/stat' '${coreutils}/bin/stat' \
@@ -67,7 +88,7 @@ stdenvNoCC.mkDerivation {
         --replace-quiet 'for directory in /usr/bin /usr/share/omarchy/bin; do' \
           'for directory in ${trustedBins}; do' \
         --replace-quiet '"/usr/bin", "/usr/share/omarchy/bin"' \
-          '"${coreutils}/bin", "${procps}/bin", "${util-linux}/bin", "${gawk}/bin", "${glib}/bin", "${jq}/bin", "${pythonRuntime}/bin", "/run/current-system/sw/bin"' \
+          '${pathCandidates}' \
         --replace-quiet '"/usr/bin:/usr/share/omarchy/bin"' \
           '"${trustedPath}"' \
         --replace-quiet '"''${trusted:-/usr/bin:/usr/share/omarchy/bin}"' \
@@ -79,6 +100,10 @@ stdenvNoCC.mkDerivation {
       --replace-fail 'Path("/usr/share/omarchy/bin")' 'Path("/run/current-system/sw/share/omarchy/bin")' \
       --replace-fail 'or "/usr/share:/usr/local/share"' 'or f"/etc/profiles/per-user/{os.environ.get("USER", "")}/share:{Path.home()}/.nix-profile/share:/run/current-system/sw/share"' \
       --replace-fail 'or "/usr/share"' 'or f"/etc/profiles/per-user/{os.environ.get("USER", "")}/share:{Path.home()}/.nix-profile/share:/run/current-system/sw/share"'
+    substituteInPlace lib/hyprchroma-icons \
+      --replace-fail 'Path("/usr/share/omarchy")' 'Path("/run/current-system/sw/share/omarchy")' \
+      --replace-fail '"/usr/local/share:/usr/share"' 'f"/etc/profiles/per-user/{os.environ.get("USER", "")}/share:{Path.home()}/.nix-profile/share:/run/current-system/sw/share"' \
+      --replace-fail '/usr/share/pixmaps' '/run/current-system/sw/share/pixmaps'
     substituteInPlace lib/sync-gtk-theme \
       --replace-fail '"/usr/share/icons/$value"' '"/etc/profiles/per-user/''${USER:-}/share/icons/$value" || -d "$HOME/.nix-profile/share/icons/$value" || -d "/run/current-system/sw/share/icons/$value"' \
       --replace-fail '/usr/share/themes /usr/local/share/themes' '/etc/profiles/per-user/''${USER:-}/share/themes "$HOME/.nix-profile/share/themes" /run/current-system/sw/share/themes'
@@ -170,12 +195,14 @@ stdenvNoCC.mkDerivation {
             old = f'"$HYPRCHROMA_SELF" --target={target} --set-enabled={enabled} --quiet || true'
             assert old in text, f"hyprchroma framework_apps {target} {enabled} call was not found"
             text = text.replace(old, old.replace(' --quiet ||', ' --quiet --force ||'), 1)
-    old = '  key=$(target_key "$1") || return 1\n'
-    assert old in text, "hyprchroma target_enabled key was not found"
-    text = text.replace(old, old + '  [[ $key == icons ]] && return 1\n', 1)
-    old = '  # theme. Only a recorded true turns any of these on.\n'
-    assert old in text, "hyprchroma target_enabled comment was not found"
-    text = text.replace(old, '  # theme. Icons stays off in this package even if a prior install recorded true.\n', 1)
+    ${lib.optionalString (!withIcons) ''
+      old = '  key=$(target_key "$1") || return 1\n'
+      assert old in text, "hyprchroma target_enabled key was not found"
+      text = text.replace(old, old + '  [[ $key == icons ]] && return 1\n', 1)
+      old = '  # theme. Only a recorded true turns any of these on.\n'
+      assert old in text, "hyprchroma target_enabled comment was not found"
+      text = text.replace(old, '  # theme. Icons stays off in this package even if a prior install recorded true.\n', 1)
+    ''}
     path.write_text(text)
 
     path = Path("lib/hyprchroma-state")
@@ -213,7 +240,7 @@ stdenvNoCC.mkDerivation {
     for file in hyprchroma-state hyprchroma-dark-reader hyprchroma-palette sync-gtk-theme sync-qt-kde-theme; do
       install -Dm755 "lib/$file" "$out/lib/hyprchroma/$file"
     done
-    install -Dm755 ${./hyprchroma-icons-stub} "$out/lib/hyprchroma/hyprchroma-icons"
+    install -Dm755 lib/hyprchroma-icons "$out/lib/hyprchroma/hyprchroma-icons"
     install -Dm755 "${terminalRenderer}" "$out/lib/hyprchroma/hyprchroma-terminals"
     install -Dm755 "${shellRenderer}" "$out/lib/hyprchroma/hyprchroma-shell"
     install -Dm755 "${electronRenderer}" "$out/lib/hyprchroma/hyprchroma-electron"
@@ -232,7 +259,6 @@ stdenvNoCC.mkDerivation {
 
   installCheckPhase = ''
     runHook preInstallCheck
-    bash -n "$out/lib/hyprchroma/hyprchroma-icons"
     # env shebangs are handled by patchShebangs.
     # Comment-only lines cannot execute a /usr path.
     bad=$(grep -RIn '/usr/' "$out/bin" "$out/lib/hyprchroma" "$out/share/hyprchroma" "$out/share/systemd/user/hyprchromad.service" | grep -Ev ':[0-9]+:[[:space:]]*(#!/usr/bin/env([[:space:]]|$)|#([^!]|$))' || true)

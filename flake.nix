@@ -33,6 +33,7 @@
           src = omarchroma;
         };
         default = self.packages.${system}.hyprchroma;
+        hyprchroma-icons = self.packages.${system}.default.override { withIcons = true; };
         omarchroma-plugin = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/omarchroma-plugin.nix {
           src = omarchroma;
           engine = self.packages.${system}.hyprchroma;
