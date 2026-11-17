@@ -171,6 +171,23 @@
               p: (p.name or "") == package.name
             ) system.config.home-manager.users.test.home.packages;
           iconsSystem = makeTestSystem [ { programs.nixarchyThemeEngine.icons.enable = true; } ];
+          # nixarchy sets the package with mkDefault; Icons must still get its build.
+          iconsUnderHostDefaultSystem = makeTestSystem [
+            (
+              { lib, ... }:
+              {
+                programs.nixarchyThemeEngine.icons.enable = true;
+                programs.nixarchyThemeEngine.package = lib.mkDefault self.packages.${system}.default;
+              }
+            )
+          ];
+          # A user's own package wins over Icons' build.
+          iconsUserPackageSystem = makeTestSystem [
+            {
+              programs.nixarchyThemeEngine.icons.enable = true;
+              programs.nixarchyThemeEngine.package = self.packages.${system}.default;
+            }
+          ];
           iconsPackage = self.packages.${system}.hyprchroma-icons;
           pluginWithIcons = pkgs.callPackage ./pkgs/omarchroma-plugin.nix {
             src = omarchroma;
@@ -532,6 +549,12 @@
                 assert hasPackageMatching iconsSystem "yaru-.*";
                 assert pluginOf noStylixSystem == self.packages.${system}.omarchroma-plugin.drvPath;
                 assert pluginOf iconsSystem == pluginWithIcons.drvPath;
+                assert
+                  iconsUnderHostDefaultSystem.config.programs.nixarchyThemeEngine.package.drvPath
+                  == iconsPackage.drvPath;
+                assert
+                  iconsUserPackageSystem.config.programs.nixarchyThemeEngine.package.drvPath
+                  == self.packages.${system}.default.drvPath;
                 assert pluginOf iconsSystem != pluginOf noStylixSystem;
                 assert (hm noStylixSystem).home.activation.nixarchyThemeEngineShell.before == [ "reloadSystemd" ];
                 assert !(builtins.hasAttr "nixarchyThemeEngineShell" (hm shellsOffSystem).home.activation);
