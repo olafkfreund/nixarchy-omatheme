@@ -8,8 +8,8 @@ grep -F '"palette", "--capture"' "$PLUGIN_PANEL" >/dev/null
 grep -F '"restore", "--captured"' "$PLUGIN_PANEL" >/dev/null
 grep -F '"restore", "--stock"' "$PLUGIN_PANEL" >/dev/null
 grep -F 'startDaemonProcess' "$PLUGIN_PANEL" >/dev/null
-for forbidden in hyprchroma-setup hyprchroma-uninstall '"icons"' 'toggleFramework("icons")' \
-  iconsStatusProcess iconsView openUninstall installDependency; do
+for forbidden in hyprchroma-setup hyprchroma-uninstall \
+  openUninstall installDependency installReversal reversalProcess; do
   if grep -F -- "$forbidden" "$PLUGIN_PANEL"; then
     echo "Panel.qml still contains $forbidden" >&2
     exit 1

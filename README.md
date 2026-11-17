@@ -93,13 +93,17 @@ The package tracks Omarchroma 4.1.0. What it changes on NixOS:
 - **Stale apps:** Omarchroma lists apps that need a restart, with a Dismiss
   button. `restartMode` stays at upstream's default, `off`.
 - **Service limits:** `hyprchromad` runs with memory, task, and CPU weight limits.
+- **Icons:** opt in with `programs.nixarchyThemeEngine.icons.enable = true`.
+  That installs the Reversal and Yaru icon themes and builds the engine with
+  Pillow, NumPy and librsvg. The option only makes Icons available; turn it
+  on in the panel's Icons page. It is off until you do. Icons treats
+  `/nix/store` as a trusted source for app covers. Removing the option
+  reverts Icons by itself at the next `hyprchromad` start. Before going back
+  to an omatheme version older than this one, switch Icons off in the panel:
+  older versions cannot undo it.
 
 Not packaged:
 
-- **Icons:** unavailable on NixOS, tracked in
-  [#66](https://github.com/olafkfreund/nixarchy-omatheme/issues/66).
-  The Icons framework stays off even if old settings turn it on, and the
-  panel does not show it.
 - **Arch setup installer and uninstaller:** the NixOS module replaces them.
 
 ## First release

@@ -47,7 +47,7 @@ stdenvNoCC.mkDerivation {
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
-    if grep -nE '/usr/bin/|/usr/share/|hyprchroma-setup|hyprchroma-uninstall|"icons"|toggleFramework\("icons"\)|target: "icons"|targetEnabled\("icons"\)|setTargetEnabled\("icons"|iconsStatusFile|nextFolderColor|installPending' \
+    if grep -nE '/usr/bin/|/usr/share/|hyprchroma-setup|hyprchroma-uninstall|installReversal|reversalProcess|pacman -S|setupScript|installPending|installDependency' \
       "$out/Panel.qml" "$out/BarWidget.qml"; then
       echo "Forbidden pattern found in installed QML files" >&2
       exit 1

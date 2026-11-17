@@ -38,17 +38,29 @@ check(load("hyprchroma-dark-reader")["running_executable"], [
 ])
 PY
 
-# b. The icons stub: status/revert are silent no-ops, everything else is refused.
-for word in status revert; do
-  out=$("$lib/hyprchroma-icons" "$word" 2>&1)
-  [[ -z $out ]] || { echo "icons $word printed: $out" >&2; exit 1; }
-done
-for word in apply folders set covers bogus; do
-  rc=0
-  out=$("$lib/hyprchroma-icons" "$word" 2>&1 >/dev/null) || rc=$?
-  [[ $rc -eq 1 ]] || { echo "icons $word exited $rc" >&2; exit 1; }
-  [[ $out == *"Icons is not available on NixOS (#66)"* ]] || { echo "icons $word: $out" >&2; exit 1; }
-done
+# b. The default build ships the real Icons helper without Pillow: status and revert
+# work, and an apply that has an app icon to draw stops with the helper's own message.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/home/.local/share/applications" "$tmp/share/icons/Reversal/places/scalable" \
+  "$tmp/share/icons/Reversal-dark" "$tmp/share/icons/hicolor/48x48/apps"
+printf '[Icon Theme]\nName=Reversal\n' > "$tmp/share/icons/Reversal/index.theme"
+cp "$tmp/share/icons/Reversal/index.theme" "$tmp/share/icons/Reversal-dark/index.theme"
+printf '<svg><path fill="#f5aa1e"/></svg>' > "$tmp/share/icons/Reversal/places/scalable/folder.svg"
+printf '[Desktop Entry]\nName=x\nIcon=x\nExec=true\n' > "$tmp/home/.local/share/applications/x.desktop"
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48"/></svg>' \
+  > "$tmp/share/icons/hicolor/48x48/apps/x.svg"
+icons() {
+  env -i HOME="$tmp/home" XDG_DATA_DIRS="$tmp/share" HYPRCHROMA_ICONS_ISOLATED=1 \
+    "$lib/hyprchroma-icons" "$@"
+}
+out=$(icons status 2>&1) || { echo "icons status failed: $out" >&2; exit 1; }
+printf '%s' "$out" | python3 -I -c 'import json, sys; assert json.load(sys.stdin)["theme"] == "Omarchroma-Icons"' ||
+  { echo "icons status is not JSON: $out" >&2; exit 1; }
+rc=0
+out=$(icons apply 2>&1) || rc=$?
+[[ $rc -ne 0 && $out == *"python-pillow is not installed"* ]] || { echo "icons apply exited $rc: $out" >&2; exit 1; }
+icons revert >/dev/null 2>&1 || { echo "icons revert failed" >&2; exit 1; }
 
 # c. Profile lookups must survive an unset USER (set -u).
 for f in sync-gtk-theme sync-qt-kde-theme; do
