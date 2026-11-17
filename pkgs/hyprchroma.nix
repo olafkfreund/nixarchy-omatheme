@@ -195,6 +195,12 @@ stdenvNoCC.mkDerivation {
             old = f'"$HYPRCHROMA_SELF" --target={target} --set-enabled={enabled} --quiet || true'
             assert old in text, f"hyprchroma framework_apps {target} {enabled} call was not found"
             text = text.replace(old, old.replace(' --quiet ||', ' --quiet --force ||'), 1)
+    old = '  { stat -c \'%n %Y\' -- "''${dirs[@]}" 2>/dev/null || true; } | sha256sum | cut -d\' \' -f1'
+    assert old in text, "icon_apps_signature stat was not found"
+    text = text.replace(old,
+        '  { stat -L -c \'%n %Y\' -- "''${dirs[@]}" 2>/dev/null || true;\n'
+        '    for entry in "''${dirs[@]}"; do readlink -f -- "$entry" 2>/dev/null || true; done\n'
+        '  } | sha256sum | cut -d\' \' -f1', 1)
     ${lib.optionalString (!withIcons) ''
       old = '  key=$(target_key "$1") || return 1\n'
       assert old in text, "hyprchroma target_enabled key was not found"
@@ -203,6 +209,70 @@ stdenvNoCC.mkDerivation {
       assert old in text, "hyprchroma target_enabled comment was not found"
       text = text.replace(old, '  # theme. Icons stays off in this package even if a prior install recorded true.\n', 1)
     ''}
+    path.write_text(text)
+
+    path = Path("lib/hyprchroma-icons")
+    text = path.read_text()
+    old = (
+        'def _copy_theme(source: Path, destination: Path) -> None:\n'
+        '    """Hard links where allowed (a user\'s own Reversal), a copy otherwise\n'
+        '    (a system Reversal, which protected_hardlinks will not let us link)."""\n'
+        '    try:\n'
+        '        linked = subprocess.run(["cp", "-al", "--", str(source), str(destination)],\n'
+        '                                capture_output=True, timeout=COPY_SECONDS).returncode == 0\n'
+        '    except subprocess.TimeoutExpired:\n'
+        '        linked = False\n'
+        '    if not linked:\n'
+        '        remove_tree(destination)\n'
+        '        subprocess.run(["cp", "-a", "--reflink=auto", "--", str(source), str(destination)],\n'
+        '                       check=True, capture_output=True, timeout=COPY_SECONDS)'
+    )
+    assert old in text, "icons _copy_theme block was not found"
+    text = text.replace(old,
+        'def _copy_theme(source: Path, destination: Path) -> None:\n'
+        '    """Copy source artwork into a writable, independent theme."""\n'
+        '    subprocess.run(["cp", "-rL", "--no-preserve=mode", "--reflink=auto", "--", str(source), str(destination)],\n'
+        '                   check=True, capture_output=True, timeout=COPY_SECONDS)', 1)
+    old = '    for directory, files in _walk_icons(root):'
+    assert old in text, "yaru_icon_names walk was not found"
+    text = text.replace(old, '    for directory, files in _walk_icons(root, follow=True):', 1)
+    old = '        for directory, files in _walk_icons(base):'
+    assert old in text, "artwork_index walk was not found"
+    text = text.replace(old, '        for directory, files in _walk_icons(base, follow=True):', 1)
+    old = '        _copy_theme(source, destination)\n        remove_entry(destination / "icon-theme.cache")'
+    assert old in text, "sage copy was not found"
+    text = text.replace(old,
+        '        _copy_theme(source, destination)\n'
+        '        write_text(destination / ".omarchroma-generated", "", 0o644)\n'
+        '        remove_entry(destination / "icon-theme.cache")', 1)
+    old = '_SYSTEM_ICON_PLACES = ("/usr", "/opt", "/var/lib/flatpak", "/var/lib/snapd", "/snap")'
+    assert old in text, "system icon places were not found"
+    text = text.replace(old,
+        '_SYSTEM_ICON_PLACES = ("/usr", "/opt", "/var/lib/flatpak", "/var/lib/snapd", "/snap", "/nix/store")', 1)
+    old = '        return str(os.stat(path).st_mtime_ns)'
+    assert old in text, "icons _mtime was not found"
+    text = text.replace(old, '        return f"{os.path.realpath(path)}:{os.stat(path).st_mtime_ns}"', 1)
+    old = '        directory = user_themes() / slug\n        overlay = not directory.exists()'
+    assert old in text, "theme pointer directory was not found"
+    text = text.replace(old,
+        '        directory = user_themes() / slug\n'
+        '        if directory.is_symlink() or (directory / "icons.theme").is_symlink():\n'
+        '            print(f"hyprchroma-icons: skipping symlinked icons.theme or theme directory: {directory}", file=sys.stderr)\n'
+        '            continue\n'
+        '        overlay = not directory.exists()', 1)
+    old = '    The base sets themselves stay installed; so does the sage variant, which is\n    an ordinary Reversal theme of its own.'
+    assert old in text, "icons revert docstring was not found"
+    text = text.replace(old,
+        '    Base sets stay installed; generated sage variants are removed when marked.', 1)
+    old = '        remove_tree(theme_dir())\n        remove_tree(data_dir())'
+    assert old in text, "icons revert generated theme removal was not found"
+    text = text.replace(old,
+        '        remove_tree(theme_dir())\n'
+        '        for name in ("Reversal-sage", "Reversal-sage-dark"):\n'
+        '            sage = public_icons() / name\n'
+        '            if (sage / ".omarchroma-generated").is_file():\n'
+        '                remove_tree(sage)\n'
+        '        remove_tree(data_dir())', 1)
     path.write_text(text)
 
     path = Path("lib/hyprchroma-state")
