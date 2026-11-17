@@ -36,7 +36,13 @@ Worktree: `/mnt/data/vmtest/omatheme-60`, branch `fix/60-starship-rerender`.
 5. The renderer finds starship also in `/etc/profiles/per-user/<user>/bin`
    and `~/.nix-profile/bin`, dropping empty `PATH` entries; it only checks
    existence. The trusted `PATH` is unchanged.
-6. Rejected: a daemon watcher, the sync fingerprint, restarting the unit,
+6. **Deviation D1 (plan review):** the renderer refuses any symlinked
+   `~/.config/starship.toml` when the base is missing
+   (`pkgs/hyprchroma-shell:59-61`), so after decision 2 removes the base
+   for a dangling link the prompt would stay stale. The renderer treats a
+   *dangling* source link like a missing file (default prompt); a live
+   link is still refused, so it never reads through one.
+7. Rejected: a daemon watcher, the sync fingerprint, restarting the unit,
    widening the trusted path, a renderer flag for `targets.starship`.
 
 ## Steps
@@ -62,25 +68,61 @@ Worktree: `/mnt/data/vmtest/omatheme-60`, branch `fix/60-starship-rerender`.
    (`programs.bash.bashrcExtra`, `programs.zsh.initContent`,
    `programs.fish.interactiveShellInit`) and the option description at
    211-215.
+   - **Before editing**, save the three hook strings of the default test
+     system (`nix eval --raw` of `programs.bash.bashrcExtra`,
+     `programs.zsh.initContent`, `programs.fish.interactiveShellInit`
+     for `home-manager.users.test` of the module check's no-Stylix
+     system) to files under `/mnt/data/vmtest/omatheme-60-baseline/`.
    - When `cfg.targets.starship` is false, the `source`/`.` line inside
-     `_hyprchroma_shell_refresh` becomes the spec's section 2 snippet
-     (Bash and Zsh share one; Fish its own). Generate it with
+     `_hyprchroma_shell_refresh` becomes, for Bash and Zsh (Nix-escaped):
+
+     ```sh
+     local starship_set=''${STARSHIP_CONFIG+x} starship_saved=''${STARSHIP_CONFIG-}
+     . "$file"
+     if [ -n "$starship_set" ]; then STARSHIP_CONFIG=$starship_saved; else unset STARSHIP_CONFIG; fi
+     ```
+
+     (Zsh keeps `source "$file"` in place of `. "$file"`), and for Fish:
+
+     ```fish
+     set -l starship_saved $STARSHIP_CONFIG
+     set -q STARSHIP_CONFIG; and set -l starship_set 1
+     source "$file"
+     if set -q starship_set; set -gx STARSHIP_CONFIG $starship_saved; else; set -e STARSHIP_CONFIG; end
+     ```
+
+     Generate it with
      `lib.optionalString` or an `if` in Nix so that with the option true
      the hook text is byte-for-byte as today.
    - Option description: "Point Starship at the themed runtime config.
      Needs a shell target (bash, zsh or fish) to load it. When false,
      shells keep their own STARSHIP_CONFIG."
-   - Check: `nix eval` the three hook strings for a system with
-     `targets.starship = false` and the default; the default must equal
-     today's string (compare against `git stash` output or the main
-     branch eval).
+   - Check: `nix eval` the three hook strings again; the default system's
+     must be byte-for-byte the saved baseline (`cmp`); the
+     `targets.starship = false` system's must contain the snippets.
    - Traps: Zsh's `local` and Bash's `local` both accept
      `local a=${X+x} b=${X-}`; Fish has no `local`, use `set -l`.
 
 3. **Starship lookup** — `pkgs/hyprchroma-shell:68` (`render_starship`).
-   - Add `import pwd`; add the spec's section 3 `starship_installed()`;
+   - Add `import pwd` and:
+
+     ```python
+     def starship_installed() -> bool:
+         paths = os.environ.get("PATH", "").split(os.pathsep)
+         try:
+             paths.append(f"/etc/profiles/per-user/{pwd.getpwuid(os.getuid()).pw_name}/bin")
+         except KeyError:
+             pass
+         paths.append(str(Path.home() / ".nix-profile/bin"))
+         return shutil.which("starship", path=os.pathsep.join(p for p in paths if p)) is not None
+     ```
+
      `render_starship` calls it instead of `shutil.which("starship")`.
      Line 143's status stays as is.
+   - D1, in `starship_base` (lines 54-64): `if source.is_symlink(): return
+     None` becomes `if source.is_symlink(): return None if source.exists()
+     else DEFAULT` with `DEFAULT = 'format = "$character"\n'` shared with
+     the last line.
    - Check: `nix build .#checks.x86_64-linux.runtime`.
    - Traps: none beyond keeping the file's exception list (line 151)
      unchanged; `KeyError` is handled inside the function.
@@ -90,7 +132,10 @@ Worktree: `/mnt/data/vmtest/omatheme-60`, branch `fix/60-starship-rerender`.
      real renderer: no `starship` in `$bin`, a stub at
      `$home/.nix-profile/bin/starship` → `starship.toml` written; a
      changed base after a render → new content in `starship.toml`; base
-     removed → `starship.toml` contains `format = "$character"`. The
+     removed → `starship.toml` contains `format = "$character"`; base
+     removed and `$config/starship.toml` a dangling link → the same
+     (D1); base removed and `$config/starship.toml` a live link → no
+     `starship.toml` written (still refused). The
      first case must take `starship` off the `PATH` the script uses for
      the renderer (the current stubs at lines 31-35 put it on).
    - `tests/shell-activation.sh`, new. Inputs from `flake.nix` as env
@@ -103,8 +148,16 @@ Worktree: `/mnt/data/vmtest/omatheme-60`, branch `fix/60-starship-rerender`.
      `$STUB_LOG` and exiting with `$STUB_RENDER_RC` / `$STUB_PALETTE_RC`
      (default 0). The script defines Home Manager's
      `run() { if [[ -v DRY_RUN ]]; then echo "$@"; else "$@"; fi; }`,
-     and runs the data with `bash -eu` in a fresh `HOME` per case: the
-     five cases of spec section 4, each asserting exit 0 and the log.
+     `export -f run`s it, and runs the data with `bash -eu` in a fresh
+     `HOME` per case, each asserting exit 0:
+     1. `~/.config/starship.toml` a symlink to a new config → base holds
+        its content, log `palette` then `hyprchroma shell`;
+     2. source removed, and separately a dangling link → base absent,
+        render logged;
+     3. `STUB_PALETTE_RC=1` → no render in the log, no
+        `~/.local/state/hyprchroma/shell.json`;
+     4. `STUB_RENDER_RC=1` → the warning on stderr;
+     5. `DRY_RUN=1` → no base, empty log.
      Case 1 asserts the log order by checking the base exists when the
      stub renderer runs (the stub records `test -f` of the base). Hook
      cases: source each hook, write a `shell-theme.sh` exporting
@@ -131,12 +184,14 @@ Worktree: `/mnt/data/vmtest/omatheme-60`, branch `fix/60-starship-rerender`.
      `nixfmt-tree`, i.e. treefmt) passes.
 
 6. **Lead: proofs and host check** (not handed off).
-   - Break proofs (CLAUDE.md §1 style: break, see red, restore with
-     `git checkout HEAD -- <file>`): drop `reloadSystemd`; drop the
+   - Break proofs run only on a committed implementation (`git status`
+     clean first), so `git checkout HEAD -- <file>` restores the
+     implementation, not the pre-change file. Break, see red, restore:
+     drop `reloadSystemd`; drop the
      palette check; drop the `rm -f` branch; drop `|| echo`; drop the
      `.nix-profile` path; drop the save/restore in the Bash hook; drop
-     the `mkIf shellTargetsEnabled`. Each must turn `nix flake check`
-     red.
+     the `mkIf shellTargetsEnabled`; drop D1's dangling-link fallback.
+     Each must turn `nix flake check` red.
    - On p620: run the built `lib/hyprchroma/hyprchroma-shell` with
      `PATH=<coreutils>/bin`, `XDG_CONFIG_HOME` and `XDG_STATE_HOME` in a
      temporary directory holding a copy of `starship.base.toml` →
