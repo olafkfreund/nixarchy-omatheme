@@ -230,9 +230,17 @@ stdenvNoCC.mkDerivation {
     assert old in text, "icons _copy_theme block was not found"
     text = text.replace(old,
         'def _copy_theme(source: Path, destination: Path) -> None:\n'
-        '    """Copy source artwork into a writable, independent theme."""\n'
-        '    subprocess.run(["cp", "-rL", "--no-preserve=mode", "--reflink=auto", "--", str(source), str(destination)],\n'
-        '                   check=True, capture_output=True, timeout=COPY_SECONDS)', 1)
+        '    """Copy source artwork into a writable, independent theme. Links are\n'
+        '    followed; one that points nowhere (the store\'s Reversal ships some) is\n'
+        '    left out, which is all cp reports for it."""\n'
+        '    result = subprocess.run(["cp", "-rL", "--no-preserve=mode", "--reflink=auto", "--", str(source), str(destination)],\n'
+        '                            capture_output=True, text=True, timeout=COPY_SECONDS,\n'
+        '                            env={**os.environ, "LC_ALL": "C"})\n'
+        '    if result.returncode != 0:\n'
+        '        other = [line for line in result.stderr.splitlines()\n'
+        '                 if not (line.startswith("cp: cannot stat ") and line.endswith(": No such file or directory"))]\n'
+        '        if other or not (destination / "index.theme").is_file():\n'
+        '            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)', 1)
     old = '    for directory, files in _walk_icons(root):'
     assert old in text, "yaru_icon_names walk was not found"
     text = text.replace(old, '    for directory, files in _walk_icons(root, follow=True):', 1)
