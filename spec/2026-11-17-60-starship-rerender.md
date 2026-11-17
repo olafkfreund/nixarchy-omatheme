@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 60
 intent: intent/2026-11-17-60-starship-rerender.md
 ---
