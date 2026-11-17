@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 issue: 60
 author: olafkfreund
 ---
@@ -73,12 +73,8 @@ next login or theme change.
   silently. p620 has starship in both, so the gap does not show there.
 - p510: no build or deploy without the owner's OK.
 
-## Open questions
+## Decisions (owner, 2026-11-17)
 
-1. Removing `~/.config/starship.toml` (dropping `programs.starship.settings`
-   or deleting a hand-written file) today leaves the old `starship.base.toml`
-   in use. In scope, so the prompt falls back to the default, or not?
-   Recommendation: in scope; otherwise the same staleness returns by
-   another door.
-2. Edits to a hand-written `~/.config/starship.toml` without a switch: in
-   scope? Recommendation: no; the issue and this outcome are about switches.
+1. Removing `~/.config/starship.toml` is in scope: the prompt falls back to
+   the default at the next switch.
+2. Hand edits without a switch are out of scope.
