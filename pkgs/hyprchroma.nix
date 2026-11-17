@@ -201,6 +201,11 @@ stdenvNoCC.mkDerivation {
         '  { stat -L -c \'%n %Y\' -- "''${dirs[@]}" 2>/dev/null || true;\n'
         '    for entry in "''${dirs[@]}"; do readlink -f -- "$entry" 2>/dev/null || true; done\n'
         '  } | sha256sum | cut -d\' \' -f1', 1)
+    # A first apply took 54.6 s on p620 (sage copies, ~200 covers); a slower
+    # host would be killed silently by the 60 s cap (plan deviation D6).
+    old = 'ICONS_SECONDS=60\n'
+    assert old in text, "ICONS_SECONDS was not found"
+    text = text.replace(old, 'ICONS_SECONDS=180\n', 1)
     ${lib.optionalString (!withIcons) ''
       old = '  key=$(target_key "$1") || return 1\n'
       assert old in text, "hyprchroma target_enabled key was not found"

@@ -5,6 +5,9 @@ set -euo pipefail
 lib="$HYPRCHROMA_PACKAGE/lib/hyprchroma"
 bin="$HYPRCHROMA_PACKAGE/bin/hyprchroma"
 
+# The Icons sync lane has room for a first apply on a slower host (#66, D6).
+grep -qx 'ICONS_SECONDS=180' "$bin" || { echo "ICONS_SECONDS is not 180" >&2; exit 1; }
+
 # a. -wrapped names normalise to the real program name (readlink is mocked).
 LIB="$lib" python3 -I - <<'PY'
 import os, sys
